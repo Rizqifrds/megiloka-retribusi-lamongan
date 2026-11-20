@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}MegiLoka{% endblock %} - E-Ticketing & Promosi Wisata Kab. Lamongan</title>
+
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <!-- Custom MegiLoka CSS -->
+    <link rel="stylesheet" href="{{ url_for('serve_css', filename='style.css') }}">
+
+    <!-- Chart.js for PAD Dashboard Analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    {% block extra_head %}{% endblock %}
+</head>
+
+<body>
+
+    <!-- Navbar MegiLoka -->
+    <nav class="navbar navbar-dark navbar-megiloka sticky-top no-print py-2">
+        <div class="container d-flex align-items-center justify-content-between">
+            <!-- Brand Logo (Pojok Kiri Atas) -->
+            <a class="navbar-brand d-flex align-items-center mb-0" href="{{ url_for('index') }}">
+                <i class="fa-solid fa-ticket text-info me-2 fs-3"></i>
+                <span>Megi<span class="text-info">Loka</span></span>
+                <span class="brand-badge">Megilan</span>
+            </a>
+
+            <!-- Right Controls: Tanya Megi, Notification Bell & Hamburger Button (Pojok Kanan Atas) -->
+            <div class="d-flex align-items-center gap-2">
+                <!-- AI Assistant Trigger Button in Navbar (Tanya Megi) -->
+                <button class="btn btn-info btn-sm rounded-pill fw-bold text-dark px-3 d-inline-flex align-items-center gap-1 shadow-sm nav-tanya-megi-btn" onclick="toggleMegiBot()" title="Tanya Megi - AI Customer Service & Wisata Lamongan">
+                    <i class="fa-solid fa-robot text-primary me-1 fs-6"></i>
+                    <span>Tanya Megi</span>
+                </button>
+
+                <!-- Guest & Visitor Notification Bell -->
+                <div class="dropdown">
+                    <button class="btn btn-outline-light btn-sm position-relative rounded-circle p-2" type="button"
+                        id="guestNotifDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="Notifikasi Agenda & Destinasi Baru">
+                        <i class="fa-solid fa-bell text-warning fs-6"></i>
+                        <span id="notifBadgeCount" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-light {% if not guest_notifications %}d-none{% endif %}">
+                            {{ guest_notifications|length }}
+                        </span>
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-end shadow-lg p-0 notif-dropdown-menu" style="width: 350px; border-radius: 16px; border: 1px solid var(--border-color); overflow: hidden;">
+                        <div class="p-3 bg-primary text-white d-flex justify-content-between align-items-center">
+                            <span class="fw-bold"><i class="fa-solid fa-bell me-2"></i>Notifikasi Pengunjung</span>
+                            <span id="notifCountHeader" class="badge bg-light text-dark rounded-pill">{{ guest_notifications|length }} Baru</span>
+                        </div>
+                        <div class="p-2 notif-list-container" style="max-height: 320px; overflow-y: auto;" id="notifListContainer">
+                            {% if guest_notifications %}
+                                {% for notif in guest_notifications %}
+                                <a href="{{ notif.url }}" class="dropdown-item p-2 mb-1 rounded-3 text-wrap border-bottom text-decoration-none {% if notif.is_urgent %}bg-warning-subtle border-warning-subtle{% else %}bg-light{% endif %}">
+                                    <div class="d-flex align-items-center justify-content-between mb-1">
+                                        <span class="badge {{ notif.badge_class }} rounded-pill font-monospace" style="font-size: 0.7rem;">{{ notif.badge_label }}</span>
+                                        <small class="text-muted" style="font-size: 0.7rem;">{{ notif.timing_desc }}</small>
+                                    </div>
+                                    <div class="fw-bold text-dark small mb-1">{{ notif.title }}</div>
+                                    <div class="text-muted" style="font-size: 0.72rem;">
+                                        <i class="fa-solid fa-location-dot me-1 text-primary"></i>{{ notif.location }} • {{ notif.date_str }}
+                                    </div>
+                                </a>
+                                {% endfor %}
+                            {% else %}
+                                <div class="p-4 text-center text-muted small" id="emptyNotifMsg">
+                                    <i class="fa-regular fa-bell-slash fs-3 d-block mb-2 text-secondary"></i>
+                                    Belum ada event atau destinasi baru dalam 30 hari ke depan.
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="p-2 text-center bg-light border-top">
+                            <a href="{{ url_for('index') }}#spotlightSection" class="btn btn-link btn-sm text-primary fw-bold p-0 text-decoration-none">
+                                Lihat Agenda di Beranda <i class="fa-solid fa-arrow-right ms-1"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Hamburger Button (Garis Tiga di Pojok Kanan Atas) -->
+                <button class="btn btn-outline-light hamburger-btn d-flex align-items-center justify-content-center p-2 rounded-3" 
+                        type="button" 
+                        data-bs-toggle="offcanvas" 
+                        data-bs-target="#megiNavOffcanvas" 
+                        aria-controls="megiNavOffcanvas" 
+                        aria-label="Menu Utama"
+                        title="Buka Menu Navigasi">
+                    <i class="fa-solid fa-bars fs-5"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Offcanvas Navigation Sidebar (Hamburger Menu Drawer) -->
+    <div class="offcanvas offcanvas-end megi-offcanvas border-0 text-white" tabindex="-1" id="megiNavOffcanvas" aria-labelledby="megiNavOffcanvasLabel">
+        <div class="offcanvas-header border-bottom border-secondary border-opacity-25 p-3">
+            <div class="d-flex align-items-center" id="megiNavOffcanvasLabel">
+                <i class="fa-solid fa-ticket text-info me-2 fs-4"></i>
+                <span class="fs-5 fw-bold">Megi<span class="text-info">Loka</span></span>
+                <span class="brand-badge ms-2">Megilan</span>
+            </div>
+            <button type="button" class="btn-close btn-close-white shadow-none" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body d-flex flex-column justify-content-between p-3 p-md-4">
+            <div class="d-flex flex-column gap-2">
+                <div class="text-uppercase text-secondary fw-bold px-2 mb-1" style="font-size: 0.75rem; letter-spacing: 1px;">
+                    Navigasi Utama
+                </div>
+
+                <!-- 1. Beranda -->
+                <a href="{{ url_for('index') }}" class="offcanvas-nav-btn {% if request.endpoint == 'index' %}active{% endif %}">
+                    <span class="btn-icon"><i class="fa-solid fa-house"></i></span>
+                    <span class="btn-text">Beranda</span>
+                </a>
+
+                <!-- 2. Destinasi Wisata -->
+                <a href="{{ url_for('destinations') }}" class="offcanvas-nav-btn {% if request.endpoint == 'destinations' %}active{% endif %}">
+                    <span class="btn-icon"><i class="fa-solid fa-compass"></i></span>
+                    <span class="btn-text">Destinasi Wisata</span>
+                </a>
+
+                <!-- 3. Kalender Event -->
+                <a href="{{ url_for('public_calendar') }}" class="offcanvas-nav-btn {% if request.endpoint == 'public_calendar' %}active{% endif %}">
+                    <span class="btn-icon"><i class="fa-solid fa-calendar-days"></i></span>
+                    <span class="btn-text">Kalender Event</span>
+                </a>
+
+                <!-- 4. Tanya Megi (AI CS) -->
+                <button type="button" class="offcanvas-nav-btn text-start border-0 w-100 bg-transparent text-info" onclick="toggleMegiBot(); bootstrap.Offcanvas.getInstance(document.getElementById('megiNavOffcanvas'))?.hide();">
+                    <span class="btn-icon"><i class="fa-solid fa-robot"></i></span>
+                    <span class="btn-text">Tanya Megi (AI CS)</span>
+                </button>
+
+                <!-- 5. Beli Tiket -->
+                <a href="{{ url_for('destinations') }}" class="offcanvas-nav-btn btn-ticket-highlight">
+                    <span class="btn-icon"><i class="fa-solid fa-ticket"></i></span>
+                    <span class="btn-text">Beli Tiket</span>
+                </a>
+
+                <!-- Hak Akses Khusus Petugas / Admin jika sedang login -->
+                {% if session.get('user_role') in ['admin', 'cashier'] %}
+                <div class="dropdown-divider border-secondary border-opacity-25 my-2"></div>
+                <div class="text-uppercase text-warning fw-bold px-2 mb-1" style="font-size: 0.75rem; letter-spacing: 1px;">
+                    Portal Petugas
+                </div>
+                <a href="{{ url_for('pos') }}" class="offcanvas-nav-btn text-warning {% if request.endpoint == 'pos' %}active{% endif %}">
+                    <span class="btn-icon"><i class="fa-solid fa-cash-register"></i></span>
+                    <span class="btn-text">POS Loket</span>
+                </a>
+                {% endif %}
+
+                {% if session.get('user_role') in ['admin', 'gate_keeper', 'cashier'] %}
+                <a href="{{ url_for('validator') }}" class="offcanvas-nav-btn text-info {% if request.endpoint == 'validator' %}active{% endif %}">
+                    <span class="btn-icon"><i class="fa-solid fa-qrcode"></i></span>
+                    <span class="btn-text">Gate Validator</span>
+                </a>
+                {% endif %}
+
+                {% if session.get('user_role') == 'admin' %}
+                <div class="dropdown-divider border-secondary border-opacity-25 my-2"></div>
+                <div class="text-uppercase text-success fw-bold px-2 mb-1" style="font-size: 0.75rem; letter-spacing: 1px;">
+                    Dinas Pariwisata (PAD)
+                </div>
+                <a href="{{ url_for('admin_dashboard') }}" class="offcanvas-nav-btn {% if request.endpoint == 'admin_dashboard' %}active{% endif %}">
+                    <span class="btn-icon"><i class="fa-solid fa-gauge"></i></span>
+                    <span class="btn-text">Dashboard Analytics</span>
+                </a>
+                <a href="{{ url_for('pad_reports') }}" class="offcanvas-nav-btn {% if request.endpoint == 'pad_reports' %}active{% endif %}">
+                    <span class="btn-icon"><i class="fa-solid fa-file-invoice-dollar"></i></span>
+                    <span class="btn-text">Laporan PAD Terpusat</span>
+                </a>
+                <a href="{{ url_for('destinations_crud') }}" class="offcanvas-nav-btn {% if request.endpoint == 'destinations_crud' %}active{% endif %}">
+                    <span class="btn-icon"><i class="fa-solid fa-map-location-dot"></i></span>
+                    <span class="btn-text">Kelola Destinasi & Tiket</span>
+                </a>
+                <a href="{{ url_for('hotels_crud') }}" class="offcanvas-nav-btn {% if request.endpoint == 'hotels_crud' %}active{% endif %}">
+                    <span class="btn-icon"><i class="fa-solid fa-hotel"></i></span>
+                    <span class="btn-text">Kelola Hotel & Promo</span>
+                </a>
+                <a href="{{ url_for('events_crud') }}" class="offcanvas-nav-btn {% if request.endpoint == 'events_crud' %}active{% endif %}">
+                    <span class="btn-icon"><i class="fa-solid fa-calendar-check"></i></span>
+                    <span class="btn-text">Kelola Kalender Event</span>
+                </a>
+                {% endif %}
+            </div>
+
+            <!-- 5. Login / User Profile Section at bottom -->
+            <div class="pt-3 border-top border-secondary border-opacity-25 mt-3">
+                {% if session.get('user_id') %}
+                <div class="p-3 rounded-4 bg-dark bg-opacity-75 border border-secondary border-opacity-25 mb-2">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-circle bg-info text-dark fw-bold rounded-circle d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
+                            <i class="fa-solid fa-user"></i>
+                        </div>
+                        <div class="overflow-hidden">
+                            <div class="fw-bold text-white small text-truncate">{{ session.get('full_name') }}</div>
+                            <span class="badge bg-secondary text-uppercase" style="font-size: 0.68rem;">{{ session.get('user_role') }}</span>
+                        </div>
+                    </div>
+                    <a href="{{ url_for('logout') }}" class="btn btn-outline-danger btn-sm w-100 rounded-pill mt-1">
+                        <i class="fa-solid fa-right-from-bracket me-1"></i>Keluar
+                    </a>
+                </div>
+                {% else %}
+                <a href="{{ url_for('login') }}" class="offcanvas-nav-btn btn-login-highlight">
+                    <span class="btn-icon"><i class="fa-solid fa-user-lock"></i></span>
+                    <span class="btn-text">Login Petugas / Admin</span>
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Flash Messages Container -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="container mt-3 no-print">
+        {% for category, message in messages %}
+        <div class="alert alert-{{ category }} alert-dismissible fade show shadow-sm border-0 rounded-3 mb-3"
+            role="alert">
+            <i
+                class="fa-solid {% if category == 'success' %}fa-circle-check{% elif category == 'danger' %}fa-triangle-exclamation{% else %}fa-circle-info{% endif %} me-2"></i>
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    <!-- Main Content Area -->
+    <main class="flex-shrink-0">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer MegiLoka -->
+    <footer class="no-print mt-auto">
+        <div class="container text-center">
+            <div class="row align-items-center py-2">
+                <div class="col-md-6 text-md-start mb-2 mb-md-0">
+                    <h5 class="brand-font text-white mb-1">MegiLoka Lamongan</h5>
+                    <p class="small text-muted mb-0">Sistem Integrasi Retribusi, E-Ticketing, dan Reporting PAD
+                        Terpusat.</p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <p class="small text-muted mb-0">&copy; 2026 Dinas Pariwisata dan Kebudayaan Kabupaten Lamongan</p>
+                    <span class="badge bg-secondary opacity-75 fs-8 mt-1">Status: Online (Pantura Ecosystem)</span>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+
+
+    <!-- Tanya Megi: local tourism assistant -->
+    <div id="megibot-panel" class="shadow-2xl rounded-4 no-print d-none position-fixed bottom-0 end-0 m-3 bg-white" style="z-index: 1080; width: 400px; max-width: calc(100vw - 30px); height: 580px; max-height: calc(100vh - 80px); display: flex; flex-direction: column; border: 1px solid var(--border-color); box-shadow: 0 20px 45px rgba(0,0,0,0.25); overflow: hidden;">
+        <!-- Header -->
+        <div class="megibot-header d-flex align-items-center justify-content-between p-3 bg-primary text-white">
+            <div class="d-flex align-items-center gap-2">
+                <div class="stat-icon bg-white text-primary rounded-circle d-flex align-items-center justify-content-center" style="width:38px;height:38px;">
+                    <i class="fa-solid fa-robot fs-5 text-primary"></i>
+                </div>
+                <div>
+                    <h6 class="mb-0 fw-bold">Tanya Megi - AI Wisata Lamongan</h6>
+                    <small class="text-white-50" style="font-size: 0.75rem;"><i class="fa-solid fa-circle text-success me-1"></i>Asisten lokal MegiLoka</small>
+                </div>
+            </div>
+            <button type="button" class="btn btn-sm btn-link text-white p-0 text-decoration-none" onclick="toggleMegiBot()" aria-label="Tutup Tanya Megi">
+                <i class="fa-solid fa-xmark fs-5"></i>
+            </button>
+        </div>
+
+        <!-- Quick Action Carousel / Pill Buttons -->
+        <div class="p-2 bg-light border-bottom">
+            <div class="text-muted mb-1 px-1 d-flex justify-content-between align-items-center" style="font-size: 0.72rem;">
+                <span><i class="fa-solid fa-comments text-primary me-1"></i>Coba tanyakan:</span>
+            </div>
+            <div class="d-flex gap-1 overflow-x-auto pb-1" style="scrollbar-width: thin;">
+                <button type="button" class="btn btn-sm btn-outline-warning text-dark rounded-pill text-nowrap fw-semibold py-0 px-2" style="font-size: 0.72rem;" onclick="askMegi('Event apa saja besok?')">
+                    Event besok
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-primary rounded-pill text-nowrap fw-semibold py-0 px-2" style="font-size: 0.72rem;" onclick="askMegi('Event apa saja bulan depan?')">
+                    Bulan depan
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-primary rounded-pill text-nowrap fw-semibold py-0 px-2" style="font-size: 0.72rem;" onclick="askMegi('Berapa harga tiket Pantai Kutang?')">
+                    Harga tiket
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill text-nowrap fw-semibold py-0 px-2" style="font-size: 0.72rem;" onclick="askMegi('Di mana lokasi WBL?')">
+                    Lokasi wisata
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill text-nowrap fw-semibold py-0 px-2" style="font-size: 0.72rem;" onclick="askMegi('Bagaimana cara memesan tiket?')">
+                    Cara pesan
+                </button>
+            </div>
+        </div>
+
+        <!-- Chat Messages Container -->
+        <div id="megibot-messages" class="p-3 flex-grow-1 overflow-y-auto bg-body-tertiary">
+            <div class="chat-bubble bot-bubble mb-3 p-3 bg-white rounded-3 shadow-sm border">
+                <div class="d-flex align-items-center gap-1 mb-1 text-primary fw-bold small">
+                    <i class="fa-solid fa-robot"></i> Tanya Megi
+                </div>
+                <div class="small text-dark">
+                    👋 <strong>Halo dulur Megilan!</strong> Selamat datang di Layanan AI Concierge & CS MegiLoka Lamongan (<strong>Tanya Megi</strong>).<br><br>
+                    Saya membantu mencari <strong>jadwal event, lokasi wisata, harga tiket, dan cara pemesanan</strong> berdasarkan data MegiLoka. Sebutkan nama acara atau tanggal agar jawaban lebih tepat.<br><br>
+                    <span class="badge bg-warning text-dark text-wrap p-2 text-start">
+                        <i class="fa-solid fa-circle-info me-1"></i>Data awal belum diverifikasi ke penyelenggara. Jam yang belum tersedia akan saya sampaikan apa adanya. Untuk pertanyaan lanjutan, tuliskan lagi nama acara atau destinasi.
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Input Form -->
+        <div class="p-2 border-top bg-white">
+            <form id="megibot-form" onsubmit="handleMegiBotSubmit(event)" class="d-flex gap-2">
+                <input type="text" id="megibot-input" class="form-control form-control-sm rounded-pill" placeholder="Contoh: event apa saja besok?" aria-label="Pertanyaan untuk Megi" maxlength="2000" autocomplete="off">
+                <button type="submit" id="megibot-send-btn" class="btn btn-primary btn-sm rounded-circle d-flex align-items-center justify-content-center" style="width:36px;height:36px;" title="Kirim">
+                    <i class="fa-solid fa-paper-plane fs-7"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Custom MegiLoka JS -->
+    <script src="{{ url_for('serve_js', filename='main.js') }}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+
+</html>

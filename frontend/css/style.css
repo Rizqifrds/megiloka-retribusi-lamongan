@@ -1,0 +1,887 @@
+/* =========================================================
+   MegiLoka Design System - Tema Pariwisata Modern Kab. Lamongan
+   Palet biru MegiLoka
+   ========================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap');
+
+:root {
+    --palette-navy: #001D39;
+    --palette-deep-blue: #0A4174;
+    --palette-slate-blue: #49769F;
+    --palette-teal: #4E8EA2;
+    --palette-mist: #6EA2B3;
+    --palette-sky: #7BBDE8;
+    --palette-ice: #BDD8E9;
+
+    --lamongan-blue: var(--palette-deep-blue);
+    --lamongan-blue-dark: var(--palette-navy);
+    --lamongan-blue-light: color-mix(in srgb, var(--palette-ice) 38%, white);
+    --lamongan-blue-border: var(--palette-ice);
+    --lamongan-accent: var(--palette-sky);
+    --lamongan-accent-light: color-mix(in srgb, var(--palette-sky) 22%, white);
+    --lamongan-accent-border: var(--palette-mist);
+    --page-bg: color-mix(in srgb, var(--palette-ice) 18%, white);
+    --dark-bg: var(--palette-navy);
+    --card-bg: #fff;
+    --text-main: var(--palette-navy);
+    --text-muted: var(--palette-deep-blue);
+    --border-color: var(--palette-ice);
+    --glass-shadow: 0 10px 25px color-mix(in srgb, var(--palette-deep-blue) 8%, transparent);
+
+    --bs-primary: var(--palette-deep-blue);
+    --bs-primary-rgb: 10, 65, 116;
+    --bs-secondary-rgb: 10, 65, 116;
+    --bs-dark-rgb: 0, 29, 57;
+    --bs-light-rgb: 243, 248, 251;
+    --bs-info-rgb: 123, 189, 232;
+    --bs-warning-rgb: 123, 189, 232;
+    --bs-body-color: var(--text-main);
+    --bs-secondary-color: var(--text-muted);
+    --bs-tertiary-bg: var(--page-bg);
+    --bs-border-color: var(--border-color);
+    --bs-link-color: var(--palette-deep-blue);
+    --bs-link-color-rgb: 10, 65, 116;
+    --bs-link-hover-color-rgb: 0, 29, 57;
+    --bs-info-text-emphasis: var(--palette-navy);
+    --bs-info-bg-subtle: var(--lamongan-blue-light);
+    --bs-info-border-subtle: var(--palette-ice);
+    --bs-warning-bg-subtle: var(--lamongan-accent-light);
+    --bs-warning-border-subtle: var(--palette-mist);
+    --bs-warning-text-emphasis: var(--palette-navy);
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--page-bg);
+    color: var(--text-main);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Bootstrap buttons use local variables rather than the global primary color. */
+.btn-primary {
+    --bs-btn-bg: var(--palette-deep-blue);
+    --bs-btn-border-color: var(--palette-deep-blue);
+    --bs-btn-hover-bg: var(--palette-navy);
+    --bs-btn-hover-border-color: var(--palette-navy);
+    --bs-btn-active-bg: var(--palette-navy);
+    --bs-btn-active-border-color: var(--palette-navy);
+    --bs-btn-disabled-bg: var(--palette-deep-blue);
+    --bs-btn-disabled-border-color: var(--palette-deep-blue);
+    --bs-btn-focus-shadow-rgb: var(--bs-primary-rgb);
+}
+
+.btn-info {
+    --bs-btn-color: var(--palette-navy);
+    --bs-btn-bg: var(--palette-sky);
+    --bs-btn-border-color: var(--palette-sky);
+    --bs-btn-hover-color: var(--palette-navy);
+    --bs-btn-hover-bg: var(--palette-ice);
+    --bs-btn-hover-border-color: var(--palette-ice);
+    --bs-btn-active-color: var(--palette-navy);
+    --bs-btn-active-bg: var(--palette-ice);
+    --bs-btn-active-border-color: var(--palette-ice);
+    --bs-btn-disabled-bg: var(--palette-sky);
+    --bs-btn-disabled-border-color: var(--palette-sky);
+    --bs-btn-focus-shadow-rgb: var(--bs-primary-rgb);
+}
+
+.btn-outline-primary,
+.btn-outline-secondary,
+.btn-outline-warning {
+    --bs-btn-color: var(--palette-deep-blue);
+    --bs-btn-border-color: var(--palette-slate-blue);
+    --bs-btn-hover-color: var(--palette-navy);
+    --bs-btn-hover-bg: var(--palette-ice);
+    --bs-btn-hover-border-color: var(--palette-slate-blue);
+    --bs-btn-active-color: var(--palette-navy);
+    --bs-btn-active-bg: var(--palette-sky);
+    --bs-btn-active-border-color: var(--palette-slate-blue);
+    --bs-btn-disabled-color: var(--palette-deep-blue);
+    --bs-btn-disabled-border-color: var(--palette-slate-blue);
+    --bs-btn-focus-shadow-rgb: var(--bs-primary-rgb);
+}
+
+.text-info,
+.text-warning {
+    color: var(--palette-deep-blue) !important;
+}
+
+.navbar-megiloka :is(.text-info, .text-warning),
+.megi-offcanvas :is(.text-info, .text-warning, .text-secondary),
+.bg-dark :is(.text-info, .text-warning),
+.price-badge-modern .text-warning,
+.popular-badge-top .text-warning {
+    color: var(--palette-sky) !important;
+}
+
+.form-control:focus,
+.form-select:focus,
+.form-check-input:focus {
+    border-color: var(--palette-slate-blue);
+    box-shadow: 0 0 0 .25rem color-mix(in srgb, var(--palette-sky) 42%, transparent);
+}
+
+.form-check-input:checked {
+    background-color: var(--palette-deep-blue);
+    border-color: var(--palette-deep-blue);
+}
+
+.dropdown-item.active,
+.dropdown-item:active {
+    background-color: var(--palette-deep-blue);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.brand-font {
+    font-family: 'Outfit', sans-serif;
+    letter-spacing: -0.02em;
+}
+
+/* Navbar Modern Glassmorphism */
+.navbar-megiloka {
+    background: rgba(0, 29, 57, 0.94);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+}
+
+.navbar-brand {
+    font-weight: 800;
+    font-size: 1.45rem;
+    letter-spacing: -0.5px;
+}
+
+.brand-badge {
+    background: linear-gradient(135deg, var(--lamongan-accent), var(--palette-deep-blue));
+    color: var(--palette-navy);
+    font-size: 0.72rem;
+    font-weight: 800;
+    padding: 2px 9px;
+    border-radius: 9999px;
+    margin-left: 7px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Modern Tourism Hero Section */
+.hero-section {
+    background: linear-gradient(145deg, rgba(0, 29, 57, 0.92) 0%, rgba(10, 65, 116, 0.82) 100%),
+        url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1920&q=80') center/cover no-repeat;
+    color: #FFFFFF;
+    padding: 95px 0 85px 0;
+    border-radius: 0 0 32px 32px;
+    position: relative;
+    box-shadow: 0 12px 30px rgba(10, 65, 116, 0.15);
+}
+
+.hero-pill-badge {
+    background: rgba(123, 189, 232, 0.18);
+    color: var(--palette-ice);
+    border: 1px solid rgba(123, 189, 232, 0.35);
+    backdrop-filter: blur(6px);
+}
+
+.hero-title {
+    font-size: 3.1rem;
+    font-weight: 800;
+    line-height: 1.18;
+}
+
+.hero-subtitle {
+    font-size: 1.15rem;
+    color: var(--palette-ice);
+    line-height: 1.6;
+}
+
+/* Cards & Modern Tourism UI */
+.card-megiloka {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    box-shadow: var(--glass-shadow);
+    transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.28s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.28s ease;
+    overflow: hidden;
+}
+
+.card-megiloka:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 20px 38px rgba(10, 65, 116, 0.12);
+    border-color: var(--lamongan-blue-border);
+}
+
+.dest-img-container {
+    height: 210px;
+    overflow: hidden;
+    position: relative;
+    background: var(--palette-navy);
+}
+
+.dest-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.5s ease;
+}
+
+.card-megiloka:hover .dest-img {
+    transform: scale(1.08);
+}
+
+/* Promo Tag Ribbon & Price Badges */
+.promo-badge-ribbon {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    background: linear-gradient(135deg, var(--lamongan-accent), var(--palette-deep-blue));
+    color: var(--palette-navy);
+    font-weight: 800;
+    font-size: 0.75rem;
+    padding: 5px 12px;
+    border-radius: 9999px;
+    box-shadow: 0 4px 12px rgba(10, 65, 116, 0.35);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    z-index: 2;
+}
+
+.popular-badge-top {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: rgba(0, 29, 57, 0.85);
+    color: var(--palette-ice);
+    backdrop-filter: blur(6px);
+    font-weight: 700;
+    font-size: 0.72rem;
+    padding: 5px 11px;
+    border-radius: 9999px;
+    border: 1px solid rgba(189, 216, 233, 0.3);
+    z-index: 2;
+}
+
+.price-badge-modern {
+    position: absolute;
+    bottom: 12px;
+    right: 12px;
+    background: rgba(0, 29, 57, 0.9);
+    color: #FFFFFF;
+    backdrop-filter: blur(8px);
+    padding: 6px 14px;
+    border-radius: 9999px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    z-index: 2;
+}
+
+/* Active Promo Inside Card */
+.promo-inner-callout {
+    background: var(--lamongan-accent-light);
+    border: 1px dashed var(--lamongan-accent-border);
+    border-radius: 12px;
+    padding: 10px 12px;
+    color: var(--palette-navy);
+}
+
+.promo-inner-callout .promo-title {
+    font-weight: 700;
+    font-size: 0.84rem;
+    color: var(--palette-deep-blue);
+}
+
+.promo-inner-callout .promo-desc {
+    font-size: 0.75rem;
+    color: var(--palette-deep-blue);
+    line-height: 1.35;
+}
+
+/* =========================================================
+   Lamongan Unified Badge System (No Rainbow Clutter!)
+   ========================================================= */
+
+/* Urgent: Hari Ini & Besok (H-1) -> Menggunakan Biru Langit */
+.badge-lamongan-urgent,
+.badge.bg-lamongan-urgent,
+.badge.lamongan-urgent,
+.lamongan-urgent {
+    background-color: var(--lamongan-accent-light) !important;
+    color: var(--palette-deep-blue) !important;
+    border: 1px solid var(--lamongan-accent-border) !important;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+}
+
+/* Upcoming: 1 Bulan ke Depan (H-30) -> Menggunakan Biru Pantura */
+.badge-lamongan-upcoming,
+.badge.bg-lamongan-upcoming,
+.badge.lamongan-upcoming,
+.lamongan-upcoming {
+    background-color: var(--lamongan-blue-light) !important;
+    color: var(--lamongan-blue) !important;
+    border: 1px solid var(--lamongan-blue-border) !important;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+}
+
+/* Subtle / Agenda Mendatang */
+.badge-lamongan-subtle,
+.badge.bg-lamongan-subtle,
+.badge.lamongan-subtle,
+.lamongan-subtle {
+    background-color: var(--lamongan-blue-light) !important;
+    color: var(--text-muted) !important;
+    border: 1px solid var(--palette-ice) !important;
+    font-weight: 600;
+}
+
+/* Accent badge */
+.badge-lamongan-accent,
+.badge.bg-lamongan-accent {
+    background: linear-gradient(135deg, var(--lamongan-accent), var(--palette-deep-blue)) !important;
+    color: var(--palette-navy) !important;
+    font-weight: 800;
+}
+
+/* Blue Solid */
+.badge-lamongan-blue,
+.badge.bg-lamongan-blue {
+    background-color: var(--lamongan-blue) !important;
+    color: #FFFFFF !important;
+    font-weight: 700;
+}
+
+/* Ticket Card Styling */
+.ticket-card {
+    background: #FFFFFF;
+    border: 2px dashed var(--lamongan-blue);
+    border-radius: 18px;
+    padding: 24px;
+    position: relative;
+}
+
+.ticket-header {
+    border-bottom: 2px solid var(--lamongan-blue-light);
+    padding-bottom: 15px;
+    margin-bottom: 15px;
+}
+
+.ticket-qr-container {
+    background: var(--page-bg);
+    padding: 15px;
+    border-radius: 12px;
+    display: inline-block;
+    border: 1px solid var(--palette-ice);
+}
+
+.ticket-status-badge {
+    font-size: 0.85rem;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 12px;
+    text-transform: uppercase;
+}
+
+/* Stat Widgets - Harmonized in Lamongan Palette */
+.stat-widget {
+    background: #FFFFFF;
+    border-radius: 18px;
+    padding: 20px;
+    box-shadow: 0 4px 18px rgba(10, 65, 116, 0.05);
+    border: 1px solid var(--palette-ice);
+    border-left: 5px solid var(--lamongan-blue);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stat-widget:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 24px rgba(10, 65, 116, 0.08);
+}
+
+.stat-widget.widget-accent {
+    border-left-color: var(--lamongan-accent);
+}
+
+.stat-widget.widget-navy {
+    border-left-color: var(--lamongan-blue-dark);
+}
+
+.stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    background: var(--lamongan-blue-light);
+    color: var(--lamongan-blue);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+}
+
+.stat-icon.icon-accent {
+    background: var(--lamongan-accent-light);
+    color: var(--palette-deep-blue);
+}
+
+/* Event Calendar Date Block */
+.event-date-box {
+    background: var(--lamongan-blue-light);
+    border: 1px solid var(--lamongan-blue-border);
+    border-radius: 14px;
+    min-width: 68px;
+    padding: 8px 10px;
+    text-align: center;
+}
+
+.event-date-box .date-num {
+    font-size: 1.55rem;
+    font-weight: 800;
+    color: var(--lamongan-blue);
+    line-height: 1;
+}
+
+.event-date-box .date-month {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--lamongan-blue-dark);
+    text-transform: uppercase;
+}
+
+/* Scanner Feedback Overlay */
+.scan-result-box {
+    border-radius: 16px;
+    padding: 25px;
+    text-align: center;
+    animation: fadeIn 0.3s ease;
+}
+
+.scan-success {
+    background: #DCFCE7;
+    border: 2px solid #22C55E;
+    color: #15803D;
+}
+
+.scan-error {
+    background: #FEE2E2;
+    border: 2px solid #EF4444;
+    color: #B91C1C;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+footer {
+    margin-top: auto;
+    background: var(--palette-navy);
+    color: var(--palette-ice);
+    padding: 32px 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+@media print {
+    .no-print {
+        display: none !important;
+    }
+
+    body {
+        background: white;
+    }
+
+    .ticket-card {
+        page-break-inside: avoid;
+        margin-bottom: 20px;
+    }
+}
+
+/* =========================================================
+   MegiBot AI CS & Notification Center Styles
+   ========================================================= */
+
+#megibot-fab {
+    background: linear-gradient(135deg, var(--lamongan-blue), var(--lamongan-blue-dark));
+    border: 2px solid var(--lamongan-accent) !important;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+#megibot-fab:hover {
+    transform: translateY(-4px) scale(1.02);
+    box-shadow: 0 12px 28px rgba(10, 65, 116, 0.4) !important;
+}
+
+.pulse-dot {
+    animation: pulseGlow 1.8s infinite;
+}
+
+@keyframes pulseGlow {
+    0% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(123, 189, 232, 0.7);
+    }
+
+    70% {
+        transform: scale(1.05);
+        box-shadow: 0 0 0 8px rgba(123, 189, 232, 0);
+    }
+
+    100% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(123, 189, 232, 0);
+    }
+}
+
+#megibot-panel {
+    animation: slideUpPanel 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUpPanel {
+    from {
+        opacity: 0;
+        transform: translateY(30px) scale(0.96);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.chat-bubble {
+    font-size: 0.88rem;
+    line-height: 1.45;
+    word-break: break-word;
+}
+
+.bot-bubble {
+    background: #FFFFFF;
+    border-radius: 14px 14px 14px 4px;
+}
+
+.user-bubble {
+    background: var(--lamongan-blue);
+    color: #FFFFFF;
+    border-radius: 14px 14px 4px 14px;
+    margin-left: auto;
+    max-width: 85%;
+}
+
+.notif-dropdown-menu .dropdown-item:hover {
+    background-color: var(--lamongan-blue-light) !important;
+}
+
+/* Group & Multi-Tag Filtering */
+.group-nav-container {
+    overflow-x: auto;
+    white-space: nowrap;
+    padding-bottom: 6px;
+    -webkit-overflow-scrolling: touch;
+}
+
+.group-nav-container::-webkit-scrollbar {
+    height: 4px;
+}
+
+.group-nav-container::-webkit-scrollbar-thumb {
+    background: var(--palette-ice);
+    border-radius: 4px;
+}
+
+.group-pill-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 18px;
+    border-radius: 9999px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    border: 1.5px solid var(--palette-ice);
+    background: #FFFFFF;
+    color: var(--text-muted);
+}
+
+.group-pill-btn:hover {
+    border-color: var(--lamongan-blue);
+    color: var(--lamongan-blue);
+    background: var(--lamongan-blue-light);
+    transform: translateY(-1px);
+}
+
+.group-pill-btn.active {
+    background: var(--lamongan-blue);
+    color: #FFFFFF;
+    border-color: var(--lamongan-blue);
+    box-shadow: 0 4px 12px rgba(10, 65, 116, 0.25);
+}
+
+.group-pill-btn .count-badge {
+    font-size: 0.72rem;
+    padding: 2px 7px;
+    border-radius: 9999px;
+    background: var(--lamongan-blue-light);
+    color: var(--text-muted);
+}
+
+.group-pill-btn.active .count-badge {
+    background: rgba(255, 255, 255, 0.25);
+    color: #FFFFFF;
+}
+
+.filter-drawer-card {
+    background: #FFFFFF;
+    border: 1px solid var(--palette-ice);
+    border-radius: 18px;
+    box-shadow: 0 8px 24px rgba(0, 29, 57, 0.05);
+}
+
+.multi-tag-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 9999px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1.5px solid var(--palette-ice);
+    background: var(--page-bg);
+    color: var(--text-main);
+    transition: all 0.18s ease;
+    user-select: none;
+}
+
+.multi-tag-label:hover {
+    border-color: var(--lamongan-blue-border);
+    background: var(--lamongan-blue-light);
+    color: var(--lamongan-blue);
+}
+
+.multi-tag-checkbox:checked+.multi-tag-label {
+    background: var(--lamongan-blue-light);
+    color: var(--lamongan-blue);
+    border-color: var(--lamongan-blue);
+    font-weight: 600;
+    box-shadow: 0 2px 6px rgba(10, 65, 116, 0.15);
+}
+
+.multi-tag-checkbox:checked+.multi-tag-label .check-icon {
+    display: inline-block !important;
+}
+
+.active-filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 9999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    background: var(--lamongan-blue-light);
+    color: var(--lamongan-blue);
+    border: 1px solid var(--lamongan-blue-border);
+}
+
+.active-filter-chip .remove-btn {
+    color: var(--lamongan-blue);
+    cursor: pointer;
+    transition: color 0.15s ease;
+    border: none;
+    background: transparent;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+}
+
+.active-filter-chip .remove-btn:hover {
+    color: #DC2626;
+}
+
+/* Tag Group Icon Colors */
+.group-icon-bahari {
+    color: var(--palette-slate-blue);
+}
+
+.group-icon-religi_sejarah {
+    color: var(--palette-deep-blue);
+}
+
+.group-icon-alam {
+    color: var(--palette-teal);
+}
+
+.group-icon-rekreasi {
+    color: var(--palette-slate-blue);
+}
+
+.group-icon-edukasi {
+    color: var(--palette-deep-blue);
+}
+
+/* =========================================================
+   MegiLoka Hamburger Button & Offcanvas Navigation Drawer
+   ========================================================= */
+
+.hamburger-btn {
+    width: 42px;
+    height: 42px;
+    border: 1.5px solid rgba(255, 255, 255, 0.25) !important;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.08) !important;
+    color: #FFFFFF !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.hamburger-btn:hover,
+.hamburger-btn:focus {
+    background: rgba(10, 65, 116, 0.45) !important;
+    border-color: var(--palette-sky) !important;
+    color: var(--palette-sky) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(123, 189, 232, 0.3);
+}
+
+.hamburger-btn:active {
+    transform: translateY(0);
+}
+
+.megi-offcanvas {
+    background: var(--palette-navy) !important;
+    border-left: 1px solid rgba(123, 189, 232, 0.2) !important;
+    box-shadow: -15px 0 40px rgba(0, 0, 0, 0.5) !important;
+    width: 330px !important;
+}
+
+.megi-offcanvas .offcanvas-header {
+    background: rgba(0, 29, 57, 0.95);
+    backdrop-filter: blur(10px);
+}
+
+.offcanvas-nav-btn {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 16px;
+    border-radius: 14px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--palette-ice);
+    text-decoration: none;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.offcanvas-nav-btn .btn-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.08);
+    font-size: 1rem;
+    color: var(--palette-sky);
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.offcanvas-nav-btn:hover {
+    background: rgba(10, 65, 116, 0.35);
+    border-color: rgba(123, 189, 232, 0.4);
+    color: #FFFFFF;
+    transform: translateX(4px);
+}
+
+.offcanvas-nav-btn:hover .btn-icon {
+    background: var(--lamongan-blue);
+    color: #FFFFFF;
+    transform: scale(1.08);
+}
+
+.offcanvas-nav-btn.active {
+    background: linear-gradient(135deg, rgba(10, 65, 116, 0.7) 0%, rgba(0, 29, 57, 0.9) 100%);
+    border-color: var(--palette-sky);
+    color: #FFFFFF;
+    box-shadow: 0 4px 14px rgba(10, 65, 116, 0.35);
+}
+
+.offcanvas-nav-btn.active .btn-icon {
+    background: var(--palette-sky);
+    color: var(--palette-navy);
+}
+
+.offcanvas-nav-btn.btn-ticket-highlight {
+    background: linear-gradient(135deg, var(--palette-slate-blue) 0%, var(--palette-deep-blue) 100%);
+    border-color: var(--palette-sky);
+    color: #FFFFFF;
+    box-shadow: 0 4px 14px rgba(73, 118, 159, 0.35);
+}
+
+.offcanvas-nav-btn.btn-ticket-highlight .btn-icon {
+    background: rgba(255, 255, 255, 0.2);
+    color: #FFFFFF;
+}
+
+.offcanvas-nav-btn.btn-ticket-highlight:hover {
+    background: linear-gradient(135deg, var(--palette-deep-blue) 0%, var(--palette-navy) 100%);
+    box-shadow: 0 6px 20px rgba(73, 118, 159, 0.55);
+    transform: translateX(4px);
+}
+
+.offcanvas-nav-btn.btn-login-highlight {
+    background: rgba(123, 189, 232, 0.08);
+    border-color: rgba(123, 189, 232, 0.4);
+    color: var(--palette-sky);
+}
+
+.offcanvas-nav-btn.btn-login-highlight:hover {
+    background: var(--palette-sky);
+    color: var(--palette-navy);
+}
+
+.offcanvas-nav-btn.btn-login-highlight:hover .btn-icon {
+    background: var(--palette-navy);
+    color: var(--palette-sky);
+}
+
+/* Navbar Tanya Megi Pill Button */
+.nav-tanya-megi-btn {
+    background: var(--palette-sky) !important;
+    border: none !important;
+    color: var(--palette-navy) !important;
+    font-weight: 700 !important;
+    padding: 6px 16px !important;
+    box-shadow: 0 2px 10px rgba(123, 189, 232, 0.35);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.nav-tanya-megi-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(123, 189, 232, 0.55);
+    background: linear-gradient(135deg, var(--palette-ice) 0%, var(--palette-sky) 100%) !important;
+    color: var(--palette-navy) !important;
+}
+
+.nav-tanya-megi-btn:active {
+    transform: translateY(0);
+}

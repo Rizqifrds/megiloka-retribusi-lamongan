@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block title %}Pemesanan Tiket - {{ destination.name }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card card-megiloka border-0 p-4 shadow-sm">
+                <div class="d-flex align-items-center mb-4 pb-3 border-bottom">
+                    <img src="{{ destination.image_url }}" alt="{{ destination.name }}" class="rounded-3 me-3" style="width: 80px; height: 80px; object-fit: cover;">
+                    <div>
+                        <span class="badge bg-light text-primary border mb-1">Form Pemesanan E-Ticket</span>
+                        <h3 class="fw-bold mb-0 text-dark">{{ destination.name }}</h3>
+                        <small class="text-muted"><i class="fa-solid fa-location-dot me-1"></i>{{ destination.location }}</small>
+                    </div>
+                </div>
+
+                {% if destination.active_promo %}
+                <div class="promo-inner-callout mb-4 d-flex align-items-center justify-content-between p-3 rounded-4 shadow-xs">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="stat-icon icon-accent rounded-circle d-flex align-items-center justify-content-center" style="width:42px;height:42px;">
+                            <i class="fa-solid fa-gift fs-5 text-warning"></i>
+                        </div>
+                        <div>
+                            <div class="fw-bold text-dark">{{ destination.active_promo.name }}</div>
+                            <small class="text-muted">{{ destination.active_promo.description }} • Berlaku s.d {{ destination.active_promo.valid_until.strftime('%d %b %Y') }}</small>
+                        </div>
+                    </div>
+                    {% if destination.active_promo.discount_percent %}
+                    <span class="badge badge-lamongan-accent rounded-pill px-3 py-2 fw-bold">Hemat {{ destination.active_promo.discount_percent|int }}%</span>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                <form action="{{ url_for('booking', destination_id=destination.id) }}" method="POST">
+                    <!-- Section 1: Data Pengunjung -->
+                    <h5 class="fw-bold text-dark mb-3"><i class="fa-solid fa-user text-primary me-2"></i>Data Pengunjung</h5>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Nama Lengkap Pengunjung <span class="text-danger">*</span></label>
+                            <input type="text" name="visitor_name" class="form-control rounded-3" placeholder="Contoh: Rahmat Hidayat" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Nomor WhatsApp / Telp</label>
+                            <input type="text" name="visitor_phone" class="form-control rounded-3" placeholder="Contoh: 081234567890">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Tanggal Kunjungan <span class="text-danger">*</span></label>
+                            <input type="date" name="visit_date" value="{{ default_date }}" class="form-control rounded-3" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Metode Pembayaran <span class="text-danger">*</span></label>
+                            <select name="payment_method" class="form-select rounded-3">
+                                <option value="qris" selected>QRIS Instant (GoPay/OVO/ShopeePay/BCA)</option>
+                                <option value="cash">Pembayaran Tunai di Loket Entrance</option>
+                                <option value="transfer">Transfer Bank / Mobile Banking</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Section 2: Pilih Jumlah Tiket -->
+                    <h5 class="fw-bold text-dark mb-3"><i class="fa-solid fa-ticket text-primary me-2"></i>Pilihan Kategori Retribusi</h5>
+                    <div class="table-responsive mb-4">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Kategori Tiket</th>
+                                    <th>Harga Resmi</th>
+                                    <th style="width: 140px;">Jumlah Tiket</th>
+                                    <th class="text-end">Subtotal</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for tt in ticket_types %}
+                                <tr class="ticket-type-row" data-price="{{ tt.price }}">
+                                    <td>
+                                        <strong class="text-dark">{{ tt.name }}</strong>
+                                        <br><small class="text-muted">{{ tt.description or 'Retribusi resmi daerah' }}</small>
+                                    </td>
+                                    <td class="fw-semibold">Rp {{ "{:,.0f}".format(tt.price) }}</td>
+                                    <td>
+                                        <input type="number" min="0" max="50" value="{% if loop.first %}1{% else %}0{% endif %}" 
+                                               name="qty_{{ tt.id }}" class="form-control form-control-sm text-center ticket-qty-input rounded-3">
+                                    </td>
+                                    <td class="text-end fw-bold text-primary subtotal-amount">
+                                        Rp 0
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Total Price Display & Action Button -->
+                    <div class="bg-light p-3 rounded-4 mb-4 d-flex justify-content-between align-items-center border">
+                        <div>
+                            <span class="text-muted small">Total Pembayaran Retribusi:</span>
+                            <h3 class="fw-bold text-primary mb-0" id="grandTotalDisplay">Rp 0</h3>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-lg rounded-pill px-5 fw-bold shadow">
+                            <i class="fa-solid fa-credit-card me-2"></i>Bayar & Dapatkan QR Tiket
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}POS Loket Retribusi - MegiLoka{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4 px-lg-5">
+    <div class="row align-items-center mb-4">
+        <div class="col-md-7">
+            <h2 class="fw-bold text-dark mb-1"><i class="fa-solid fa-cash-register text-warning me-2"></i>POS Loket Penjualan Tiket Masuk</h2>
+            <p class="text-muted mb-0">Sistem penerbitan e-ticket retribusi cepat untuk petugas loket pintu masuk.</p>
+        </div>
+        <div class="col-md-5 text-md-end">
+            <!-- Destination Selector Dropdown for Cashier -->
+            <form action="{{ url_for('pos') }}" method="GET" class="d-inline-block">
+                <select name="dest_id" onchange="this.form.submit()" class="form-select form-select-lg rounded-pill fw-bold border-primary shadow-sm">
+                    {% for d in destinations %}
+                    <option value="{{ d.id }}" {% if selected_dest and selected_dest.id == d.id %}selected{% endif %}>
+                        📍 Loket: {{ d.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </form>
+        </div>
+    </div>
+
+    {% if selected_dest %}
+    <form action="{{ url_for('pos') }}" method="POST">
+        <input type="hidden" name="destination_id" value="{{ selected_dest.id }}">
+        
+        <div class="row g-4">
+            <!-- Left Panel: Ticket Items Selection -->
+            <div class="col-lg-8">
+                <div class="card border-0 shadow-sm rounded-4 p-4">
+                    <h5 class="fw-bold text-dark mb-3">Pilih Kategori Tiket Retribusi</h5>
+
+                    <div class="row g-3">
+                        {% for tt in ticket_types %}
+                        <div class="col-md-6">
+                            <div class="p-3 border rounded-4 bg-white ticket-type-row" data-price="{{ tt.price }}">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <div>
+                                        <h6 class="fw-bold mb-0 text-dark">{{ tt.name }}</h6>
+                                        <small class="text-muted">{{ tt.description or 'Retribusi resmi' }}</small>
+                                    </div>
+                                    <span class="badge bg-primary fs-6">
+                                        Rp {{ "{:,.0f}".format(tt.price) }}
+                                    </span>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center mt-3">
+                                    <span class="text-muted small">Jumlah:</span>
+                                    <input type="number" min="0" max="100" value="0" name="qty_{{ tt.id }}" 
+                                           class="form-control form-control-lg text-center ticket-qty-input rounded-3 shadow-sm" style="width: 100px;">
+                                </div>
+                                <div class="text-end mt-2">
+                                    <small class="text-muted">Subtotal: </small>
+                                    <span class="fw-bold text-primary subtotal-amount">Rp 0</span>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel: Cashier Transaction Summary -->
+            <div class="col-lg-4">
+                <div class="card border-0 shadow-sm rounded-4 p-4 bg-dark text-white sticky-top" style="top: 90px;">
+                    <h5 class="fw-bold mb-3 text-info"><i class="fa-solid fa-receipt me-2"></i>Ringkasan Transaksi</h5>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-light small">Nama Pengunjung (Opsional):</label>
+                        <input type="text" name="visitor_name" class="form-control rounded-3" placeholder="Pengunjung Loket">
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label text-light small">Metode Pembayaran:</label>
+                        <select name="payment_method" class="form-select rounded-3">
+                            <option value="cash" selected>💵 Tunai (Cash)</option>
+                            <option value="qris">📱 QRIS Standard</option>
+                        </select>
+                    </div>
+
+                    <div class="border-top border-secondary pt-3 mb-4">
+                        <span class="text-muted small d-block">TOTAL RETRIBUSI:</span>
+                        <h2 class="fw-bold text-warning mb-0" id="grandTotalDisplay">Rp 0</h2>
+                    </div>
+
+                    <button type="submit" class="btn btn-info btn-lg w-100 rounded-pill fw-bold text-dark shadow">
+                        <i class="fa-solid fa-print me-2"></i>Cetak & Terbitkan Tiket QR
+                    </button>
+                </div>
+            </div>
+        </div>
+    </form>
+    {% endif %}
+</div>
+{% endblock %}

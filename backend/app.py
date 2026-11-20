@@ -1,0 +1,1400 @@
+import hmac
+import os
+import sys
+import io
+import re
+import random
+import string
+import csv
+from datetime import datetime, date, timedelta
+from functools import wraps
+
+# Ensure backend directory is in sys.path
+BACKEND_DIR = os.path.abspath(os.path.dirname(__file__))
+if BACKEND_DIR not in sys.path:
+    sys.path.insert(0, BACKEND_DIR)
+
+PROJECT_ROOT = os.path.abspath(os.path.join(BACKEND_DIR, '..'))
+FRONTEND_DIR = os.path.join(PROJECT_ROOT, 'frontend')
+
+from flask import (
+    Flask, render_template, request, redirect, url_for, flash, session, jsonify, Response, send_from_directory
+)
+from config import Config
+from models import db, Destination, User, TicketType, Transaction, Ticket, PADReportRecap, Hotel, Promo, Event
+from utils.qr_generator import create_ticket_qr_payload, verify_qr_payload, generate_qr_image_base64
+from utils.holiday_feed import HolidayFeed
+from ai.concierge import answer_question
+from ai.intent_model import ModelUnavailable
+from utils.ai_service import (
+    LAMONGAN_EVENT_TEMPLATES, LAMONGAN_DESTINATION_TEMPLATES,
+    resolve_date_target, detect_ai_intent
+)
+
+app = Flask(
+    __name__,
+    template_folder=os.path.join(FRONTEND_DIR, 'html'),
+    static_folder=None
+)
+app.config.from_object(Config)
+
+db.init_app(app)
+holiday_feed = HolidayFeed(os.path.join(app.instance_path, 'holiday-feed.json'), app.config['HOLIDAY_PARTNER_URL'])
+
+
+@app.before_request
+def start_holiday_feed():
+    if not app.testing:
+        holiday_feed.start()
+
+# Static file routes for css and js directories
+@app.route('/css/<path:filename>', endpoint='serve_css')
+def serve_css(filename):
+    return send_from_directory(os.path.join(FRONTEND_DIR, 'css'), filename)
+
+@app.route('/js/<path:filename>', endpoint='serve_js')
+def serve_js(filename):
+    return send_from_directory(os.path.join(FRONTEND_DIR, 'js'), filename)
+
+@app.route('/static/<path:filename>', endpoint='static')
+def serve_static(filename):
+    if filename.startswith('css/'):
+        return send_from_directory(os.path.join(FRONTEND_DIR, 'css'), filename[4:])
+    elif filename.startswith('js/'):
+        return send_from_directory(os.path.join(FRONTEND_DIR, 'js'), filename[3:])
+    return send_from_directory(FRONTEND_DIR, filename)
+
+# Helper Decorators for RBAC
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            flash('Silakan login terlebih dahulu untuk mengakses halaman ini.', 'warning')
+            return redirect(url_for('login', next=request.url))
+        return f(*args, **kwargs)
+    return decorated_function
+
+def role_required(*roles):
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if 'user_role' not in session or session['user_role'] not in roles:
+                flash('Anda tidak memiliki hak akses untuk halaman tersebut.', 'danger')
+                return redirect(url_for('index'))
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
+
+def generate_invoice_number():
+    date_str = datetime.now().strftime('%Y%m%d')
+    random_str = ''.join(random.choices(string.digits, k=4))
+    return f"INV-{date_str}-{random_str}"
+
+def generate_ticket_code(dest_code):
+    random_str = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+    return f"MGLK-{dest_code}-{random_str}"
+
+# Auto Database Seeder Helper
+def seed_database():
+    with app.app_context():
+        db.create_all()
+        if Destination.query.count() == 0:
+            print("[INFO] Seeding initial MegiLoka data...")
+            dest1 = Destination(
+                code='DEST-SND', name='Makam Sunan Drajat', category='Wisata Religi & Sejarah',
+                location='Kecamatan Paciran, Kab. Lamongan', base_price=10000.00,
+                description='Situs ziarah dan museum bersejarah Sunan Drajat, salah satu Walisongo penyebar agama Islam di Pantura Jawa.',
+                image_url='https://images.unsplash.com/photo-1548625361-185b9826f634?auto=format&fit=crop&w=800&q=80', is_active=True
+            )
+            dest2 = Destination(
+                code='DEST-WDG', name='Waduk Gondang', category='Wisata Alam & Edukasi',
+                location='Kecamatan Sugio, Kab. Lamongan', base_price=15000.00,
+                description='Waduk buatan seluas 6.600 Ha yang indah dengan perahu wisata, taman bermain, dan pemandangan perbukitan hijau.',
+                image_url='https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80', is_active=True
+            )
+            dest3 = Destination(
+                code='DEST-MZG', name='Maharani Zoo & Goa', category='Wisata Satwa & Geologi',
+                location='Kecamatan Paciran, Kab. Lamongan', base_price=35000.00,
+                description='Kombinasi keindahan goa stalaktit/stalagmit alami dengan kebun binatang modern koleksi satwa terlengkap.',
+                image_url='https://images.unsplash.com/photo-1534567153574-2b12153a87f0?auto=format&fit=crop&w=800&q=80', is_active=True
+            )
+            dest4 = Destination(
+                code='DEST-WBL', name='Wisata Bahari Lamongan (WBL)', category='Taman Rekreasi Bahari',
+                location='Kecamatan Paciran, Kab. Lamongan', base_price=75000.00,
+                description='Taman hiburan pesisir Pantura populer dengan puluhan wahana permainan modern, waterpark, dan wahana ekstrem.',
+                image_url='https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80', is_active=True
+            )
+            dest5 = Destination(
+                code='DEST-KTG', name='Pantai Kutang', category='Wisata Pesisir & Mangrove',
+                location='Desa Labuhan, Kec. Brondong, Kab. Lamongan', base_price=10000.00,
+                description='Destinasi wisata pantai ikonik dengan jembatan kayu melintasi hutan mangrove dan pemandangan matahari terbenam.',
+                image_url='https://images.unsplash.com/photo-1519046904884-53103b34b206?auto=format&fit=crop&w=800&q=80', is_active=True
+            )
+            db.session.add_all([dest1, dest2, dest3, dest4, dest5])
+            db.session.commit()
+
+            # Add Ticket Types
+            tt1 = TicketType(destination_id=dest1.id, name='Tiket Perorangan Dewasa', price=10000.00, description='Retribusi perorangan dewasa')
+            tt2 = TicketType(destination_id=dest1.id, name='Tiket Perorangan Anak', price=5000.00, description='Retribusi anak usia 3-10 tahun')
+            tt3 = TicketType(destination_id=dest2.id, name='Tiket Dewasa Waduk Gondang', price=15000.00, description='Retribusi pengunjung dewasa')
+            tt4 = TicketType(destination_id=dest2.id, name='Tiket Anak Waduk Gondang', price=8000.00, description='Retribusi anak-anak')
+            tt5 = TicketType(destination_id=dest3.id, name='Tiket Reguler Maharani Zoo & Goa', price=35000.00, description='Tiket terusan Zoo & Goa')
+            tt6 = TicketType(destination_id=dest4.id, name='Tiket Terusan WBL', price=75000.00, description='Tiket wahana terusan WBL')
+            tt7 = TicketType(destination_id=dest5.id, name='Tiket Retribusi Pantai Kutang', price=10000.00, description='Tiket jembatan mangrove & pantai')
+            db.session.add_all([tt1, tt2, tt3, tt4, tt5, tt6, tt7])
+            db.session.commit()
+
+            # Add Users
+            admin_user = User(username='admin', full_name='Administrator Disparbud Lamongan', role='admin')
+            admin_user.set_password('password123')
+
+            cashier1 = User(username='kasir_drajat', full_name='Budi Loket Sunan Drajat', role='cashier', destination_id=dest1.id)
+            cashier1.set_password('password123')
+
+            gate1 = User(username='gate_drajat', full_name='Siti Petugas Gate Drajat', role='gate_keeper', destination_id=dest1.id)
+            gate1.set_password('password123')
+
+            db.session.add_all([admin_user, cashier1, gate1])
+            db.session.commit()
+
+            # Add Initial PAD Recap data for chart preview
+            today = date.today()
+            for i in range(7):
+                past_date = today - timedelta(days=i)
+                db.session.add_all([
+                    PADReportRecap(destination_id=dest1.id, report_date=past_date, total_tickets_sold=random.randint(80, 150), total_revenue=random.randint(80, 150)*10000.0),
+                    PADReportRecap(destination_id=dest2.id, report_date=past_date, total_tickets_sold=random.randint(50, 120), total_revenue=random.randint(50, 120)*15000.0),
+                    PADReportRecap(destination_id=dest3.id, report_date=past_date, total_tickets_sold=random.randint(100, 250), total_revenue=random.randint(100, 250)*35000.0),
+                    PADReportRecap(destination_id=dest4.id, report_date=past_date, total_tickets_sold=random.randint(200, 500), total_revenue=random.randint(200, 500)*75000.0),
+                    PADReportRecap(destination_id=dest5.id, report_date=past_date, total_tickets_sold=random.randint(60, 110), total_revenue=random.randint(60, 110)*10000.0)
+                ])
+            db.session.commit()
+            print("[INFO] MegiLoka Database destinations & tickets populated.")
+
+        # Ensure active promos for top frequently visited destinations
+        if Promo.query.count() == 0:
+            print("[INFO] Seeding active promotions for top visited destinations...")
+            today = date.today()
+            v_from = today - timedelta(days=5)
+            v_until = today + timedelta(days=60)
+
+            dest_wbl = Destination.query.filter(Destination.name.like('%Bahari Lamongan%')).first()
+            dest_mzg = Destination.query.filter(Destination.name.like('%Maharani%')).first()
+            dest_snd = Destination.query.filter(Destination.name.like('%Sunan Drajat%')).first()
+            dest_ktg = Destination.query.filter(Destination.name.like('%Pantai Kutang%')).first()
+            dest_wdg = Destination.query.filter(Destination.name.like('%Waduk Gondang%')).first()
+
+            promos_data = [
+                (dest_wbl, 'Promo Megilan Bahari Spesial', 20.0, 'Diskon 20% tiket terusan wahana modern WBL Pantura.', v_from, v_until),
+                (dest_mzg, 'Promo Liburan Ceria Zoo & Goa', 15.0, 'Diskon 15% tiket terusan kebun binatang modern dan goa alami.', v_from, v_until),
+                (dest_snd, 'Promo Berkah Ziarah Walisongo', 20.0, 'Diskon 20% retribusi masuk kawasan wisata religi & museum.', v_from, v_until),
+                (dest_ktg, 'Promo Senja Bahari Pantai Kutang', 20.0, 'Diskon 20% tiket eksplorasi jembatan mangrove & pantai.', v_from, v_until),
+                (dest_wdg, 'Promo Wisata Asri Waduk Gondang', 20.0, 'Diskon 20% tiket rekreasi danau dan taman bermain keluarga.', v_from, v_until),
+            ]
+            for dest, p_name, disc, desc, vf, vu in promos_data:
+                if dest:
+                    db.session.add(Promo(
+                        destination_id=dest.id,
+                        name=p_name,
+                        discount_percent=disc,
+                        description=desc,
+                        valid_from=vf,
+                        valid_until=vu
+                    ))
+            db.session.commit()
+            print("[INFO] Active promotions seeded successfully.")
+
+# ----------------------------
+# UPCOMING SPOTLIGHT & NOTIFICATIONS HELPER
+# ----------------------------
+
+def get_upcoming_items():
+    today = date.today()
+    items = []
+
+    # 1. Events Mendatang (Unified Lamongan Color System)
+    upcoming_events = Event.query.filter(Event.event_date >= today).order_by(Event.event_date.asc()).all()
+    for ev in upcoming_events:
+        diff = (ev.event_date - today).days
+        is_urgent = (diff <= 1)
+        is_month = (1 < diff <= 30)
+
+        # Lamongan Identity Badges: Gold for immediate/urgent, Blue for 1 month
+        if diff == 0:
+            badge_label = "SEDANG BERLANGSUNG"
+            badge_class = "lamongan-urgent"
+            timing_desc = "Sedang Berlangsung Hari Ini"
+        elif diff == 1:
+            badge_label = "H-1 (BESOK BERLANGSUNG)"
+            badge_class = "lamongan-urgent"
+            timing_desc = "Akan Berlangsung Besok"
+        elif diff <= 30:
+            badge_label = f"H-{diff} (1 BULAN LAGI)"
+            badge_class = "lamongan-upcoming"
+            timing_desc = f"Akan Berlangsung dalam {diff} Hari"
+        else:
+            badge_label = f"AGENDA MENDATANG ({diff} HARI)"
+            badge_class = "lamongan-subtle"
+            timing_desc = f"Agenda {diff} Hari ke Depan"
+
+        items.append({
+            'id': ev.id,
+            'type': 'event',
+            'type_label': 'Event Pariwisata',
+            'title': ev.name,
+            'date': ev.event_date,
+            'date_str': ev.event_date.strftime('%d %B %Y'),
+            'days_left': diff,
+            'is_urgent': is_urgent,
+            'is_month': is_month,
+            'badge_label': badge_label,
+            'badge_class': badge_class,
+            'timing_desc': timing_desc,
+            'description': ev.description or 'Event budaya & pariwisata daerah Lamongan.',
+            'image_url': ev.image_url or 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=800&q=80',
+            'location': ev.destination.name if ev.destination else 'Kabupaten Lamongan',
+            'url': url_for('public_calendar')
+        })
+
+    # 2. Destinasi Baru dengan Opening Date
+    upcoming_dests = Destination.query.filter(
+        Destination.opening_date.isnot(None),
+        Destination.opening_date >= today
+    ).order_by(Destination.opening_date.asc()).all()
+
+    for dst in upcoming_dests:
+        diff = (dst.opening_date - today).days
+        is_urgent = (diff <= 1)
+        is_month = (1 < diff <= 30)
+
+        if diff == 0:
+            badge_label = "GRAND OPENING HARI INI"
+            badge_class = "lamongan-urgent"
+            timing_desc = "Grand Opening Hari Ini"
+        elif diff == 1:
+            badge_label = "H-1 (BESOK GRAND OPENING)"
+            badge_class = "lamongan-urgent"
+            timing_desc = "Grand Opening Besok"
+        elif diff <= 30:
+            badge_label = f"H-{diff} (BUKA BULAN DEPAN)"
+            badge_class = "lamongan-upcoming"
+            timing_desc = f"Buka dalam {diff} Hari"
+        else:
+            badge_label = f"DESTINASI BARU ({diff} HARI)"
+            badge_class = "lamongan-subtle"
+            timing_desc = f"Buka {diff} Hari ke Depan"
+
+        items.append({
+            'id': dst.id,
+            'type': 'destination',
+            'type_label': 'Destinasi Baru',
+            'title': dst.name,
+            'date': dst.opening_date,
+            'date_str': dst.opening_date.strftime('%d %B %Y'),
+            'days_left': diff,
+            'is_urgent': is_urgent,
+            'is_month': is_month,
+            'badge_label': badge_label,
+            'badge_class': badge_class,
+            'timing_desc': timing_desc,
+            'description': dst.description or 'Destinasi wisata terbaru di Kabupaten Lamongan.',
+            'image_url': dst.image_url or 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80',
+            'location': dst.location,
+            'url': url_for('destination_detail', id=dst.id)
+        })
+
+    items.sort(key=lambda x: x['days_left'])
+    return items
+
+@app.context_processor
+def inject_global_data():
+    all_upcoming = get_upcoming_items()
+    # Filter alert notifikasi untuk guest: range 1 hari (H-1) atau 1 bulan (H-30)
+    alert_notifications = [item for item in all_upcoming if item['days_left'] <= 30]
+    return {
+        'guest_notifications': alert_notifications,
+        'total_notifications': len(alert_notifications)
+    }
+
+# ----------------------------
+# PUBLIC ROUTES (Promosi & E-Booking)
+# ----------------------------
+
+@app.route('/')
+def index():
+    today = date.today()
+
+    # Revisions: Only frequently visited destinations with active ongoing promo
+    active_promo_dest_ids = [
+        p.destination_id for p in Promo.query.filter(
+            Promo.destination_id.isnot(None),
+            Promo.valid_from <= today,
+            Promo.valid_until >= today
+        ).all()
+    ]
+
+    # Order popular destinations by ticket sales
+    popular_dest_ids = [
+        row[0] for row in db.session.query(
+            Destination.id
+        ).outerjoin(PADReportRecap, Destination.id == PADReportRecap.destination_id
+        ).filter(
+            Destination.is_active == True,
+            Destination.id.in_(active_promo_dest_ids)
+        ).group_by(Destination.id
+        ).order_by(db.func.coalesce(db.func.sum(PADReportRecap.total_tickets_sold), 0).desc()
+        ).all()
+    ]
+
+    featured_destinations = []
+    for d_id in popular_dest_ids:
+        d = Destination.query.get(d_id)
+        if d and d.active_promo:
+            featured_destinations.append(d)
+
+    # Fallback if no promo destinations found
+    if not featured_destinations:
+        featured_destinations = Destination.query.filter_by(is_active=True).limit(5).all()
+
+    total_dest = Destination.query.count()
+    upcoming_events = Event.query.filter(Event.event_date >= today).order_by(Event.event_date.asc()).limit(3).all()
+
+    active_promos = Promo.query.filter(Promo.valid_until >= today).all()
+
+    all_upcoming = get_upcoming_items()
+    seen_titles = set()
+    spotlight_items = []
+    for item in all_upcoming:
+        if item['days_left'] <= 30 and item['title'] not in seen_titles:
+            seen_titles.add(item['title'])
+            spotlight_items.append(item)
+        if len(spotlight_items) >= 3:
+            break
+
+    return render_template(
+        'index.html',
+        destinations=featured_destinations,
+        total_dest=total_dest,
+        events=upcoming_events,
+        promos=active_promos,
+        spotlight_items=spotlight_items,
+        holiday_updates=holiday_feed.view(),
+    )
+
+
+@app.get('/agenda-libur/pembaruan')
+def holiday_updates_partial():
+    response = app.make_response(render_template('holiday_feed.html', holiday_updates=holiday_feed.view()))
+    response.cache_control.no_store = True
+    return response
+
+
+@app.post('/api/agenda-libur/webhook')
+def holiday_partner_webhook():
+    token = app.config['HOLIDAY_WEBHOOK_TOKEN']
+    if not holiday_feed.partner_url or not token:
+        return '', 404
+    expected = f'Bearer {token}'.encode('utf-8')
+    provided = request.headers.get('Authorization', '').encode('utf-8')
+    if not hmac.compare_digest(provided, expected):
+        return '', 401
+    if not holiday_feed.request_partner_refresh():
+        return jsonify(status='rate_limited'), 429, {'Retry-After': '10'}
+    return jsonify(status='accepted'), 202
+
+
+TAG_GROUPS = {
+    'bahari': {
+        'name': 'Bahari & Pesisir',
+        'icon': 'fa-water',
+        'color': '#0284c7',
+        'tags': [
+            'Taman Rekreasi Bahari',
+            'Wisata Bahari & Pesisir',
+            'Wisata Pesisir & Mangrove',
+            'Wisata Bahari & Santai',
+            'Wisata Bahari & Camping'
+        ]
+    },
+    'religi_sejarah': {
+        'name': 'Religi & Cagar Budaya',
+        'icon': 'fa-mosque',
+        'color': '#16a34a',
+        'tags': [
+            'Wisata Religi & Sejarah',
+            'Wisata Religi & Arsitektur',
+            'Wisata Religi & Kesehatan',
+            'Wisata Sejarah & Cagar Budaya',
+            'Wisata Sejarah Kolonial',
+            'Wisata Alam & Legenda Sejarah'
+        ]
+    },
+    'alam': {
+        'name': 'Alam & Konservasi',
+        'icon': 'fa-tree',
+        'color': '#059669',
+        'tags': [
+            'Wisata Alam & Edukasi',
+            'Wisata Alam & Spot Foto',
+            'Wisata Satwa & Geologi',
+            'Wisata Geologi & Danau',
+            'Ekowisata & Lingkungan'
+        ]
+    },
+    'rekreasi': {
+        'name': 'Taman Rekreasi & Keluarga',
+        'icon': 'fa-ferris-wheel',
+        'color': '#ea580c',
+        'tags': [
+            'Taman Hiburan & Rekreasi Keluarga',
+            'Taman Kota & Rekreasi Publik'
+        ]
+    },
+    'edukasi': {
+        'name': 'Edukasi & Museum',
+        'icon': 'fa-landmark-dome',
+        'color': '#4f46e5',
+        'tags': [
+            'Wisata Edukasi & Outbound',
+            'Museum Edukasi & Teknologi AR'
+        ]
+    }
+}
+
+@app.route('/destinations')
+def destinations():
+    search_query = request.args.get('q', '').strip()
+    selected_group = request.args.get('group', '').strip()
+
+    # Support multiple tags (getlist for ?tags=A&tags=B or comma separated)
+    selected_tags = request.args.getlist('tags')
+    if not selected_tags and request.args.get('tags'):
+        selected_tags = [t.strip() for t in request.args.get('tags').split(',') if t.strip()]
+
+    # Backward compatibility with single category
+    legacy_cat = request.args.get('category', '').strip()
+    if legacy_cat and legacy_cat not in selected_tags:
+        selected_tags.append(legacy_cat)
+
+    query = Destination.query.filter_by(is_active=True)
+    if search_query:
+        query = query.filter(
+            Destination.name.ilike(f"%{search_query}%") |
+            Destination.description.ilike(f"%{search_query}%") |
+            Destination.location.ilike(f"%{search_query}%")
+        )
+
+    if selected_tags:
+        query = query.filter(Destination.category.in_(selected_tags))
+    elif selected_group and selected_group in TAG_GROUPS:
+        query = query.filter(Destination.category.in_(TAG_GROUPS[selected_group]['tags']))
+
+    all_destinations = query.order_by(Destination.name.asc()).all()
+
+    # Hitung jumlah per tag
+    dest_counts_rows = db.session.query(
+        Destination.category, db.func.count(Destination.id)
+    ).filter(Destination.is_active == True).group_by(Destination.category).all()
+    tag_counts = {cat_name: cnt for cat_name, cnt in dest_counts_rows}
+
+    # Hitung jumlah per kelompok
+    group_counts = {}
+    for g_key, g_data in TAG_GROUPS.items():
+        group_counts[g_key] = sum(tag_counts.get(tag, 0) for tag in g_data['tags'])
+
+    total_dest_count = Destination.query.filter_by(is_active=True).count()
+
+    return render_template(
+        'destinations.html',
+        destinations=all_destinations,
+        tag_groups=TAG_GROUPS,
+        group_counts=group_counts,
+        selected_group=selected_group,
+        selected_tags=selected_tags,
+        tag_counts=tag_counts,
+        total_dest_count=total_dest_count,
+        search_query=search_query
+    )
+
+@app.route('/destinations/<int:id>')
+def destination_detail(id):
+    destination = Destination.query.get_or_404(id)
+    ticket_types = TicketType.query.filter_by(destination_id=id).all()
+    return render_template('destination_detail.html', destination=destination, ticket_types=ticket_types)
+
+@app.route('/booking/<int:destination_id>', methods=['GET', 'POST'])
+def booking(destination_id):
+    destination = Destination.query.get_or_404(destination_id)
+    ticket_types = TicketType.query.filter_by(destination_id=destination_id).all()
+
+    if request.method == 'POST':
+        visitor_name = request.form.get('visitor_name', '').strip()
+        visitor_phone = request.form.get('visitor_phone', '').strip()
+        visit_date_str = request.form.get('visit_date', '').strip()
+        payment_method = request.form.get('payment_method', 'qris')
+
+        if not visitor_name or not visit_date_str:
+            flash('Nama Pengunjung dan Tanggal Kunjungan wajib diisi.', 'danger')
+            return redirect(url_for('booking', destination_id=destination_id))
+
+        visit_date = datetime.strptime(visit_date_str, '%Y-%m-%d').date()
+        invoice_num = generate_invoice_number()
+
+        total_amount = 0
+        ticket_items = []
+
+        for tt in ticket_types:
+            qty = int(request.form.get(f'qty_{tt.id}', 0))
+            if qty > 0:
+                item_total = float(tt.price) * qty
+                total_amount += item_total
+                ticket_items.append({'ticket_type': tt, 'quantity': qty})
+
+        if total_amount == 0:
+            flash('Pilih minimal 1 jumlah tiket retribusi.', 'warning')
+            return redirect(url_for('booking', destination_id=destination_id))
+
+        # Create Transaction
+        trans = Transaction(
+            invoice_number=invoice_num,
+            destination_id=destination.id,
+            visitor_name=visitor_name,
+            visitor_phone=visitor_phone,
+            total_amount=total_amount,
+            payment_method=payment_method,
+            payment_status='paid'
+        )
+        db.session.add(trans)
+        db.session.flush()
+
+        # Create Individual Tickets & QR Hashes
+        created_tickets = []
+        for item in ticket_items:
+            tt = item['ticket_type']
+            for _ in range(item['quantity']):
+                t_code = generate_ticket_code(destination.code)
+                payload, sec_hash = create_ticket_qr_payload(t_code, destination.id, str(visit_date), app.config['SECRET_KEY'])
+
+                t = Ticket(
+                    transaction_id=trans.id,
+                    ticket_type_id=tt.id,
+                    ticket_code=t_code,
+                    qr_hash=payload,
+                    status='valid',
+                    valid_for_date=visit_date
+                )
+                db.session.add(t)
+                created_tickets.append(t)
+
+        # Update PAD Recap
+        recap = PADReportRecap.query.filter_by(destination_id=destination.id, report_date=date.today()).first()
+        if recap:
+            recap.total_tickets_sold += len(created_tickets)
+            recap.total_revenue = float(recap.total_revenue) + total_amount
+        else:
+            recap = PADReportRecap(
+                destination_id=destination.id,
+                report_date=date.today(),
+                total_tickets_sold=len(created_tickets),
+                total_revenue=total_amount
+            )
+            db.session.add(recap)
+
+        db.session.commit()
+        flash(f'Pemesanan tiket berhasil! No Invoice: {invoice_num}', 'success')
+        return redirect(url_for('ticket_view', invoice_number=invoice_num))
+
+    default_date = (date.today() + timedelta(days=1)).strftime('%Y-%m-%d')
+    return render_template('booking.html', destination=destination, ticket_types=ticket_types, default_date=default_date)
+
+@app.route('/tickets/<invoice_number>')
+def ticket_view(invoice_number):
+    transaction = Transaction.query.filter_by(invoice_number=invoice_number).first_or_404()
+    tickets = Ticket.query.filter_by(transaction_id=transaction.id).all()
+
+    # Generate Base64 QR Code images for inline display
+    ticket_data_list = []
+    for t in tickets:
+        qr_b64 = generate_qr_image_base64(t.qr_hash)
+        ticket_data_list.append({
+            'ticket': t,
+            'qr_b64': qr_b64
+        })
+
+    return render_template('ticket_view.html', transaction=transaction, ticket_data_list=ticket_data_list)
+
+# ----------------------------
+# POS LOKET & GATE VALIDATION
+# ----------------------------
+
+@app.route('/pos', methods=['GET', 'POST'])
+@login_required
+@role_required('admin', 'cashier')
+def pos():
+    destinations = Destination.query.filter_by(is_active=True).all()
+    selected_dest_id = request.args.get('dest_id', type=int)
+    
+    if not selected_dest_id and session.get('user_destination_id'):
+        selected_dest_id = session['user_destination_id']
+    elif not selected_dest_id and destinations:
+        selected_dest_id = destinations[0].id
+
+    selected_dest = Destination.query.get(selected_dest_id) if selected_dest_id else None
+    ticket_types = TicketType.query.filter_by(destination_id=selected_dest_id).all() if selected_dest_id else []
+
+    if request.method == 'POST':
+        visitor_name = request.form.get('visitor_name', 'Pengunjung Loket').strip()
+        payment_method = request.form.get('payment_method', 'cash')
+        dest_id = int(request.form.get('destination_id'))
+        dest = Destination.query.get_or_404(dest_id)
+
+        tt_list = TicketType.query.filter_by(destination_id=dest_id).all()
+        total_amount = 0
+        ticket_items = []
+
+        for tt in tt_list:
+            qty = int(request.form.get(f'qty_{tt.id}', 0))
+            if qty > 0:
+                item_total = float(tt.price) * qty
+                total_amount += item_total
+                ticket_items.append({'ticket_type': tt, 'quantity': qty})
+
+        if total_amount == 0:
+            flash('Pilih minimal 1 jenis tiket retribusi.', 'warning')
+            return redirect(url_for('pos', dest_id=dest_id))
+
+        invoice_num = generate_invoice_number()
+        trans = Transaction(
+            invoice_number=invoice_num,
+            destination_id=dest_id,
+            cashier_id=session.get('user_id'),
+            visitor_name=visitor_name,
+            total_amount=total_amount,
+            payment_method=payment_method,
+            payment_status='paid'
+        )
+        db.session.add(trans)
+        db.session.flush()
+
+        today_date = date.today()
+        created_tickets = []
+        for item in ticket_items:
+            tt = item['ticket_type']
+            for _ in range(item['quantity']):
+                t_code = generate_ticket_code(dest.code)
+                payload, sec_hash = create_ticket_qr_payload(t_code, dest.id, str(today_date), app.config['SECRET_KEY'])
+                t = Ticket(
+                    transaction_id=trans.id,
+                    ticket_type_id=tt.id,
+                    ticket_code=t_code,
+                    qr_hash=payload,
+                    status='valid',
+                    valid_for_date=today_date
+                )
+                db.session.add(t)
+                created_tickets.append(t)
+
+        # Update PAD Recap
+        recap = PADReportRecap.query.filter_by(destination_id=dest.id, report_date=today_date).first()
+        if recap:
+            recap.total_tickets_sold += len(created_tickets)
+            recap.total_revenue = float(recap.total_revenue) + total_amount
+        else:
+            recap = PADReportRecap(
+                destination_id=dest.id,
+                report_date=today_date,
+                total_tickets_sold=len(created_tickets),
+                total_revenue=total_amount
+            )
+            db.session.add(recap)
+
+        db.session.commit()
+        flash(f'Transaksi Loket Berhasil! Invoice: {invoice_num}', 'success')
+        return redirect(url_for('ticket_view', invoice_number=invoice_num))
+
+    return render_template('pos.html', destinations=destinations, selected_dest=selected_dest, ticket_types=ticket_types)
+
+@app.route('/validator')
+@login_required
+@role_required('admin', 'gate_keeper', 'cashier')
+def validator():
+    destinations = Destination.query.filter_by(is_active=True).all()
+    recent_scans = Ticket.query.filter(Ticket.scanned_at.isnot(None)).order_by(Ticket.scanned_at.desc()).limit(10).all()
+    return render_template('validator.html', destinations=destinations, recent_scans=recent_scans)
+
+@app.route('/api/validate-qr', methods=['POST'])
+@login_required
+def api_validate_qr():
+    data = request.json or {}
+    qr_payload = data.get('qr_payload', '').strip()
+
+    if not qr_payload:
+        return jsonify({'success': False, 'message': 'Payload QR Code kosong.'}), 400
+
+    is_valid, t_code, dest_id, valid_date_str, err_msg = verify_qr_payload(qr_payload, app.config['SECRET_KEY'])
+
+    if not is_valid:
+        return jsonify({'success': False, 'message': err_msg, 'status_code': 'INVALID_SIGNATURE'}), 200
+
+    ticket = Ticket.query.filter_by(ticket_code=t_code).first()
+
+    if not ticket:
+        return jsonify({'success': False, 'message': f'Kode Tiket {t_code} tidak ditemukan dalam database.', 'status_code': 'NOT_FOUND'}), 200
+
+    if ticket.status == 'used':
+        scanned_time = ticket.scanned_at.strftime('%d-%m-%Y %H:%M:%S') if ticket.scanned_at else 'Sebelumnya'
+        return jsonify({
+            'success': False,
+            'message': f'TIKET SUDAH DIGUNAKAN! (Telah di-scan pada {scanned_time})',
+            'status_code': 'ALREADY_USED',
+            'ticket': {
+                'code': ticket.ticket_code,
+                'visitor': ticket.transaction.visitor_name,
+                'destination': ticket.transaction.destination.name,
+                'type': ticket.ticket_type.name,
+                'scanned_at': scanned_time
+            }
+        }), 200
+
+    if ticket.status in ['expired', 'cancelled']:
+        return jsonify({'success': False, 'message': f'Tiket ini sudah tidak berlaku (Status: {ticket.status.upper()}).', 'status_code': 'EXPIRED'}), 200
+
+    # Verification Success - Mark as USED
+    ticket.status = 'used'
+    ticket.scanned_at = datetime.now()
+    ticket.scanned_by_user_id = session.get('user_id')
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'message': 'TIKET VALID! Akses masuk disetujui.',
+        'status_code': 'SUCCESS',
+        'ticket': {
+            'code': ticket.ticket_code,
+            'visitor': ticket.transaction.visitor_name,
+            'destination': ticket.transaction.destination.name,
+            'type': ticket.ticket_type.name,
+            'price': float(ticket.ticket_type.price),
+            'valid_for_date': str(ticket.valid_for_date),
+            'scanned_at': ticket.scanned_at.strftime('%d-%m-%Y %H:%M:%S')
+        }
+    }), 200
+
+# ----------------------------
+# ADMIN & PAD REPORTING DASHBOARD
+# ----------------------------
+
+@app.route('/admin/dashboard')
+@login_required
+@role_required('admin')
+def admin_dashboard():
+    total_destinations = Destination.query.count()
+    total_transactions = Transaction.query.count()
+    
+    # Revenue Calculations
+    today_date = date.today()
+    today_revenue_res = db.session.query(db.func.sum(PADReportRecap.total_revenue)).filter(PADReportRecap.report_date == today_date).scalar()
+    today_revenue = float(today_revenue_res) if today_revenue_res else 0.0
+
+    total_revenue_res = db.session.query(db.func.sum(PADReportRecap.total_revenue)).scalar()
+    total_revenue = float(total_revenue_res) if total_revenue_res else 0.0
+
+    total_tickets_res = db.session.query(db.func.sum(PADReportRecap.total_tickets_sold)).scalar()
+    total_tickets_sold = int(total_tickets_res) if total_tickets_res else 0
+
+    # Chart Data: Revenue per Destination
+    dest_revenues = db.session.query(
+        Destination.name,
+        db.func.sum(PADReportRecap.total_revenue).label('revenue'),
+        db.func.sum(PADReportRecap.total_tickets_sold).label('tickets')
+    ).join(PADReportRecap, Destination.id == PADReportRecap.destination_id)\
+     .group_by(Destination.name).all()
+
+    chart_labels = [r[0] for r in dest_revenues]
+    chart_revenue_data = [float(r[1] or 0) for r in dest_revenues]
+    chart_ticket_data = [int(r[2] or 0) for r in dest_revenues]
+
+    # Daily Trend (Last 7 days)
+    last_7_days = [today_date - timedelta(days=i) for i in range(6, -1, -1)]
+    trend_labels = [d.strftime('%d %b') for d in last_7_days]
+    trend_revenue = []
+
+    for d in last_7_days:
+        rev = db.session.query(db.func.sum(PADReportRecap.total_revenue)).filter(PADReportRecap.report_date == d).scalar()
+        trend_revenue.append(float(rev) if rev else 0.0)
+
+    recent_transactions = Transaction.query.order_by(Transaction.transaction_time.desc()).limit(8).all()
+
+    # 1-Month Revenue and AI Insights
+    this_month_start = today_date.replace(day=1)
+    this_month_revenue_res = db.session.query(db.func.sum(PADReportRecap.total_revenue)).filter(PADReportRecap.report_date >= this_month_start).scalar()
+    this_month_revenue = float(this_month_revenue_res) if this_month_revenue_res else 0.0
+
+    last_month_end = this_month_start - timedelta(days=1)
+    # Handle January case where previous month is December of previous year
+    last_month_start = last_month_end.replace(day=1)
+    
+    last_month_revenue_res = db.session.query(db.func.sum(PADReportRecap.total_revenue)).filter(
+        PADReportRecap.report_date >= last_month_start, PADReportRecap.report_date <= last_month_end
+    ).scalar()
+    last_month_revenue = float(last_month_revenue_res) if last_month_revenue_res else 0.0
+
+    ai_insight = "Pendapatan bulan ini berjalan stabil."
+    if last_month_revenue > 0:
+        growth = ((this_month_revenue - last_month_revenue) / last_month_revenue) * 100
+        if growth > 15:
+            ai_insight = f"🌟 Prediksi AI: Lonjakan PAD! Pendapatan bulan ini naik {growth:.1f}% dibandingkan bulan lalu. Cek kalender event terdekat yang mungkin memicu lonjakan ini."
+        elif growth < -15:
+            ai_insight = f"⚠️ Peringatan AI: Anomali PAD! Pendapatan turun {abs(growth):.1f}% dari bulan lalu. Pertimbangkan untuk menambah Promo Hotel atau Event."
+
+    return render_template(
+        'admin/dashboard.html',
+        total_destinations=total_destinations,
+        total_transactions=total_transactions,
+        today_revenue=today_revenue,
+        total_revenue=total_revenue,
+        this_month_revenue=this_month_revenue,
+        ai_insight=ai_insight,
+        total_tickets_sold=total_tickets_sold,
+        chart_labels=chart_labels,
+        chart_revenue_data=chart_revenue_data,
+        chart_ticket_data=chart_ticket_data,
+        trend_labels=trend_labels,
+        trend_revenue=trend_revenue,
+        recent_transactions=recent_transactions
+    )
+
+@app.route('/admin/pad-reports')
+@login_required
+@role_required('admin')
+def pad_reports():
+    start_date_str = request.args.get('start_date', '').strip()
+    end_date_str = request.args.get('end_date', '').strip()
+    dest_id = request.args.get('dest_id', type=int)
+
+    query = PADReportRecap.query.join(Destination)
+
+    if start_date_str:
+        s_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        query = query.filter(PADReportRecap.report_date >= s_date)
+    if end_date_str:
+        e_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+        query = query.filter(PADReportRecap.report_date <= e_date)
+    if dest_id:
+        query = query.filter(PADReportRecap.destination_id == dest_id)
+
+    recaps = query.order_by(PADReportRecap.report_date.desc(), Destination.name.asc()).all()
+    destinations = Destination.query.all()
+
+    total_tickets = sum(r.total_tickets_sold for r in recaps)
+    total_pad_revenue = sum(float(r.total_revenue) for r in recaps)
+
+    # Yearly breakdown data per destination
+    current_year = date.today().year
+    all_year_recaps = PADReportRecap.query.filter(
+        PADReportRecap.report_date >= date(current_year, 1, 1),
+        PADReportRecap.report_date <= date(current_year, 12, 31)
+    ).all()
+    
+    yearly_breakdown = {}
+    for r in all_year_recaps:
+        d_name = r.destination.name
+        if d_name not in yearly_breakdown:
+            yearly_breakdown[d_name] = [0] * 12
+        m = r.report_date.month
+        yearly_breakdown[d_name][m-1] += float(r.total_revenue)
+
+    return render_template(
+        'admin/pad_reports.html',
+        recaps=recaps,
+        destinations=destinations,
+        start_date=start_date_str,
+        end_date=end_date_str,
+        selected_dest_id=dest_id,
+        total_tickets=total_tickets,
+        total_pad_revenue=total_pad_revenue,
+        yearly_breakdown=yearly_breakdown,
+        current_year=current_year
+    )
+
+@app.route('/admin/export-pad-csv')
+@login_required
+@role_required('admin')
+def export_pad_csv():
+    recaps = PADReportRecap.query.join(Destination).order_by(PADReportRecap.report_date.desc()).all()
+
+    output = []
+    output.append(['ID Recap', 'Tanggal Laporan', 'Kode Destinasi', 'Nama Objek Wisata', 'Total Tiket Terjual', 'Total Pendapatan (PAD Rp)'])
+
+    for r in recaps:
+        output.append([
+            r.id,
+            r.report_date.strftime('%Y-%m-%d'),
+            r.destination.code,
+            r.destination.name,
+            r.total_tickets_sold,
+            float(r.total_revenue)
+        ])
+
+    si = io.StringIO()
+    cw = csv.writer(si)
+    cw.writerows(output)
+
+    return Response(
+        si.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-disposition": f"attachment; filename=Rekap_PAD_MegiLoka_{datetime.now().strftime('%Y%m%d')}.csv"}
+    )
+
+# ----------------------------
+# MASTER DATA DESTINASI (CRUD)
+# ----------------------------
+
+@app.route('/admin/destinations')
+@login_required
+@role_required('admin')
+def destinations_crud():
+    destinations = Destination.query.order_by(Destination.id.desc()).all()
+    return render_template('admin/destinations_crud.html', destinations=destinations)
+
+@app.route('/admin/destinations/create', methods=['POST'])
+@login_required
+@role_required('admin')
+def destination_create():
+    name = request.form.get('name', '').strip()
+    code = request.form.get('code', '').strip().upper()
+    category = request.form.get('category', 'Wisata Alam').strip()
+    location = request.form.get('location', '').strip()
+    base_price = float(request.form.get('base_price', 0))
+    description = request.form.get('description', '').strip()
+    image_url = request.form.get('image_url', '').strip()
+
+    if not name or not code or not location:
+        flash('Nama, Kode, dan Lokasi destinasi wajib diisi.', 'danger')
+        return redirect(url_for('destinations_crud'))
+
+    if Destination.query.filter_by(code=code).first():
+        flash(f'Kode Destinasi {code} sudah digunakan.', 'danger')
+        return redirect(url_for('destinations_crud'))
+
+    dest = Destination(
+        code=code,
+        name=name,
+        category=category,
+        location=location,
+        base_price=base_price,
+        description=description,
+        image_url=image_url or 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80',
+        is_active=True
+    )
+    db.session.add(dest)
+    db.session.commit()
+
+    # Create default adult ticket type
+    tt = TicketType(destination_id=dest.id, name='Tiket Reguler', price=base_price, description='Retribusi umum')
+    db.session.add(tt)
+    db.session.commit()
+
+    flash(f'Destinasi wisata {name} berhasil ditambahkan!', 'success')
+    return redirect(url_for('destinations_crud'))
+
+@app.route('/admin/destinations/edit/<int:id>', methods=['POST'])
+@login_required
+@role_required('admin')
+def destination_edit(id):
+    dest = Destination.query.get_or_404(id)
+    dest.name = request.form.get('name', dest.name).strip()
+    dest.category = request.form.get('category', dest.category).strip()
+    dest.location = request.form.get('location', dest.location).strip()
+    dest.base_price = float(request.form.get('base_price', dest.base_price))
+    dest.description = request.form.get('description', dest.description).strip()
+    dest.image_url = request.form.get('image_url', dest.image_url).strip()
+    dest.is_active = True if request.form.get('is_active') == 'on' else False
+
+    db.session.commit()
+    flash(f'Data destinasi {dest.name} berhasil diperbarui.', 'success')
+    return redirect(url_for('destinations_crud'))
+
+@app.route('/admin/destinations/delete/<int:id>', methods=['POST'])
+@login_required
+@role_required('admin')
+def destination_delete(id):
+    dest = Destination.query.get_or_404(id)
+    name = dest.name
+    db.session.delete(dest)
+    db.session.commit()
+    flash(f'Destinasi wisata {name} telah dihapus.', 'info')
+    return redirect(url_for('destinations_crud'))
+
+@app.route('/admin/ticket-types/create', methods=['POST'])
+@login_required
+@role_required('admin')
+def ticket_type_create():
+    dest_id = int(request.form.get('destination_id'))
+    name = request.form.get('name', '').strip()
+    price = float(request.form.get('price', 0))
+    description = request.form.get('description', '').strip()
+
+    if not name or price <= 0:
+        flash('Nama Kategori dan Harga Tiket harus diisi dengan benar.', 'danger')
+        return redirect(url_for('destinations_crud'))
+
+    tt = TicketType(destination_id=dest_id, name=name, price=price, description=description)
+    db.session.add(tt)
+    db.session.commit()
+    flash(f'Jenis Tiket {name} berhasil ditambahkan!', 'success')
+    return redirect(url_for('destinations_crud'))
+
+# ----------------------------
+# HOTELS & PROMOS CRUD
+# ----------------------------
+
+@app.route('/admin/hotels')
+@login_required
+@role_required('admin')
+def hotels_crud():
+    hotels = Hotel.query.order_by(Hotel.id.desc()).all()
+    destinations = Destination.query.all()
+    return render_template('admin/hotels_crud.html', hotels=hotels, destinations=destinations)
+
+@app.route('/admin/hotels/create', methods=['POST'])
+@login_required
+@role_required('admin')
+def hotel_create():
+    name = request.form.get('name')
+    location = request.form.get('location')
+    dest_id = request.form.get('destination_id')
+    desc = request.form.get('description')
+    
+    h = Hotel(name=name, location=location, destination_id=dest_id, description=desc)
+    db.session.add(h)
+    db.session.commit()
+    flash('Hotel berhasil ditambahkan.', 'success')
+    return redirect(url_for('hotels_crud'))
+
+@app.route('/admin/promos/create', methods=['POST'])
+@login_required
+@role_required('admin')
+def promo_create():
+    hotel_id = request.form.get('hotel_id')
+    name = request.form.get('name')
+    discount_percent = request.form.get('discount_percent')
+    valid_from_str = request.form.get('valid_from')
+    valid_until_str = request.form.get('valid_until')
+    
+    valid_from = datetime.strptime(valid_from_str, '%Y-%m-%d').date() if valid_from_str else None
+    valid_until = datetime.strptime(valid_until_str, '%Y-%m-%d').date() if valid_until_str else None
+    
+    p = Promo(hotel_id=hotel_id, name=name, discount_percent=discount_percent, valid_from=valid_from, valid_until=valid_until)
+    db.session.add(p)
+    db.session.commit()
+    flash('Promo berhasil ditambahkan.', 'success')
+    return redirect(url_for('hotels_crud'))
+
+# ----------------------------
+# EVENTS CALENDAR
+# ----------------------------
+
+@app.route('/admin/events')
+@login_required
+@role_required('admin')
+def events_crud():
+    events = Event.query.order_by(Event.event_date.desc()).all()
+    destinations = Destination.query.all()
+    return render_template('admin/events_crud.html', events=events, destinations=destinations)
+
+@app.route('/admin/events/create', methods=['POST'])
+@login_required
+@role_required('admin')
+def event_create():
+    name = request.form.get('name')
+    dest_id = request.form.get('destination_id')
+    event_date_str = request.form.get('event_date')
+    desc = request.form.get('description')
+    
+    event_date = datetime.strptime(event_date_str, '%Y-%m-%d').date() if event_date_str else None
+    
+    if not dest_id:
+        dest_id = None
+        
+    e = Event(name=name, destination_id=dest_id, event_date=event_date, description=desc)
+    db.session.add(e)
+    db.session.commit()
+    flash('Event berhasil ditambahkan.', 'success')
+    return redirect(url_for('events_crud'))
+
+@app.route('/calendar')
+def public_calendar():
+    events = Event.query.order_by(Event.event_date.asc()).all()
+    return render_template('calendar.html', events=events)
+
+# ----------------------------
+# AUTHENTICATION
+# ----------------------------
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '').strip()
+
+        user = User.query.filter_by(username=username).first()
+        if user and user.check_password(password):
+            session['user_id'] = user.id
+            session['username'] = user.username
+            session['full_name'] = user.full_name
+            session['user_role'] = user.role
+            session['user_destination_id'] = user.destination_id
+
+            flash(f'Selamat datang kembali, {user.full_name}!', 'success')
+            if user.role == 'admin':
+                return redirect(url_for('admin_dashboard'))
+            elif user.role == 'gate_keeper':
+                return redirect(url_for('validator'))
+            else:
+                return redirect(url_for('pos'))
+
+        flash('Username atau Password salah.', 'danger')
+
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    flash('Anda telah keluar dari akun.', 'info')
+    return redirect(url_for('index'))
+
+# ----------------------------
+# AI CONCIERGE & CS AUTO-PUBLISHER API
+# ----------------------------
+
+@app.route('/api/guest/notifications', methods=['GET'])
+def api_guest_notifications():
+    all_upcoming = get_upcoming_items()
+    alert_notifications = [item for item in all_upcoming if item['days_left'] <= 30]
+
+    notifs_json = []
+    for it in alert_notifications:
+        notifs_json.append({
+            'id': it['id'],
+            'type': it['type'],
+            'type_label': it['type_label'],
+            'title': it['title'],
+            'date_str': it['date_str'],
+            'days_left': it['days_left'],
+            'is_urgent': it['is_urgent'],
+            'badge_label': it['badge_label'],
+            'badge_class': it['badge_class'],
+            'timing_desc': it['timing_desc'],
+            'description': it['description'],
+            'image_url': it['image_url'],
+            'location': it['location'],
+            'url': it['url']
+        })
+
+    return jsonify({
+        'success': True,
+        'total': len(notifs_json),
+        'notifications': notifs_json
+    })
+
+@app.route('/api/ai/chat', methods=['POST'])
+def api_ai_chat():
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify(success=False, reply='Kirim objek JSON dengan pertanyaan teks.'), 400
+    if any(not isinstance(data.get(key, ''), str) for key in ('message', 'action', 'range')):
+        return jsonify(success=False, reply='Pertanyaan, aksi, dan rentang harus berupa teks.'), 400
+    user_msg = data.get('message', '').strip()
+    action = data.get('action', '').strip()
+    range_type = data.get('range', '1month').strip()
+    if len(user_msg) > 2000 or action not in ('', 'chat', 'add_event', 'add_destination'):
+        return jsonify(success=False, reply='Pertanyaan maksimal 2000 karakter dan aksi harus dikenal.'), 400
+
+    if not user_msg and not action:
+        return jsonify({
+            'success': False,
+            'reply': 'Silakan ketik pertanyaan tentang wisata atau jadwal event Lamongan.'
+        }), 400
+
+    if action in ('', 'chat'):
+        detected = detect_ai_intent(user_msg)
+        if detected['intent'] in ['add_event', 'add_destination']:
+            action = detected['intent']
+            range_type = detected.get('range', range_type)
+
+    if action in ('add_event', 'add_destination'):
+        user_id = session.get('user_id')
+        user = db.session.get(User, user_id) if isinstance(user_id, int) else None
+        if not user or user.role != 'admin' or session.get('user_role') != 'admin':
+            return jsonify(success=False, reply='Penambahan data hanya untuk administrator. Pengunjung dapat menanyakan jadwal, lokasi, dan harga tiket.'), 403
+    elif not user_msg:
+        return jsonify(success=False, reply='Silakan ketik pertanyaan Anda.'), 400
+
+    today = date.today()
+
+    # ACTION 1: ADD EVENT
+    if action == 'add_event':
+        target_date, days_diff, date_label = resolve_date_target(range_type)
+
+        available_templates = [t for t in LAMONGAN_EVENT_TEMPLATES if not Event.query.filter_by(name=t['name']).first()]
+        if not available_templates:
+            template = random.choice(LAMONGAN_EVENT_TEMPLATES)
+            event_name = f"{template['name']} Edisi {target_date.year}"
+        else:
+            template = available_templates[0]
+            event_name = template['name']
+
+        # Custom name override
+        name_match = re.search(r'["\'](.*?)["\']', user_msg)
+        if name_match:
+            event_name = name_match.group(1).strip()
+
+        dest_obj = None
+        if template.get('dest_code_hint'):
+            dest_obj = Destination.query.filter_by(code=template['dest_code_hint']).first()
+
+        new_event = Event(
+            destination_id=dest_obj.id if dest_obj else None,
+            name=event_name,
+            description=template['description'],
+            event_date=target_date,
+            image_url=template['image_url']
+        )
+        db.session.add(new_event)
+        db.session.commit()
+
+        is_alert_range = (days_diff <= 30)
+        timing_status = "H-1 Hari (Besok!)" if days_diff <= 1 else f"H-{days_diff} (1 Bulan ke Depan)" if days_diff <= 30 else f"Agenda {days_diff} Hari ke Depan"
+
+        reply_msg = (
+            f"🎉 **Berhasil Menambahkan Event Pariwisata Lamongan!**\n\n"
+            f"📌 **Nama Event**: {new_event.name}\n"
+            f"📅 **Tanggal Pelaksanaan**: {new_event.event_date.strftime('%d %B %Y')} ({timing_status})\n"
+            f"📍 **Lokasi**: {dest_obj.name if dest_obj else 'Kabupaten Lamongan'}\n"
+            f"📝 **Deskripsi**: {new_event.description}\n\n"
+        )
+        if is_alert_range:
+            reply_msg += (
+                f"🔔 **Status Notifikasi Role Guest**: Karena event ini dijadwalkan dalam rentang "
+                f"{'1 hari (besok)' if days_diff <= 1 else '1 bulan ke depan'}, event ini **otomatis tayang di Beranda (Section Spotlight)** "
+                f"dan **menyalakan lonceng notifikasi serta alert bagi pengunjung (guest)**! 🚀"
+            )
+        else:
+            reply_msg += (
+                f"🗓️ **Status Agenda**: Event ini telah terdaftar dalam kalender pariwisata 1 tahun ke depan dan dapat diakses pada halaman Kalender Event."
+            )
+
+        return jsonify({
+            'success': True,
+            'action_executed': 'add_event',
+            'reply': reply_msg,
+            'item': {
+                'id': new_event.id,
+                'type': 'event',
+                'name': new_event.name,
+                'date': str(new_event.event_date),
+                'days_left': days_diff,
+                'is_spotlight': is_alert_range,
+                'badge': 'H-1 (BESOK!)' if days_diff <= 1 else f'H-{days_diff} (1 BULAN LAGI)' if days_diff <= 30 else f'{days_diff} HARI'
+            }
+        })
+
+    # ACTION 2: ADD DESTINATION
+    elif action == 'add_destination':
+        target_date, days_diff, date_label = resolve_date_target(range_type)
+
+        available_templates = [t for t in LAMONGAN_DESTINATION_TEMPLATES if not Destination.query.filter_by(name=t['name']).first()]
+        if not available_templates:
+            template = random.choice(LAMONGAN_DESTINATION_TEMPLATES)
+            dest_name = f"{template['name']} #{random.randint(2, 99)}"
+        else:
+            template = available_templates[0]
+            dest_name = template['name']
+
+        # Custom name override
+        name_match = re.search(r'["\'](.*?)["\']', user_msg)
+        if name_match:
+            dest_name = name_match.group(1).strip()
+
+        dest_code = f"DEST-{template['code_prefix']}-{random.randint(100, 999)}"
+
+        new_dest = Destination(
+            code=dest_code,
+            name=dest_name,
+            category=template['category'],
+            location=template['location'],
+            base_price=template['base_price'],
+            description=template['description'],
+            image_url=template['image_url'],
+            opening_date=target_date,
+            is_active=True
+        )
+        db.session.add(new_dest)
+        db.session.flush()
+
+        # Buat tiket default
+        tt = TicketType(
+            destination_id=new_dest.id,
+            name=template['ticket_name'],
+            price=template['base_price'],
+            description=f"Retribusi masuk resmi {new_dest.name}"
+        )
+        db.session.add(tt)
+        db.session.commit()
+
+        is_alert_range = (days_diff <= 30)
+        timing_status = "H-1 Hari (Besok Grand Opening!)" if days_diff <= 1 else f"Buka dalam {days_diff} Hari (1 Bulan Lagi)" if days_diff <= 30 else f"Grand Opening {days_diff} Hari ke Depan"
+
+        reply_msg = (
+            f"🏖️ **Berhasil Menerbitkan Destinasi Wisata Baru Lamongan!**\n\n"
+            f"🏷️ **Nama Wisata**: {new_dest.name} (Kode: `{new_dest.code}`)\n"
+            f"📅 **Tanggal Pembukaan / Grand Opening**: {new_dest.opening_date.strftime('%d %B %Y')} ({timing_status})\n"
+            f"📍 **Lokasi**: {new_dest.location}\n"
+            f"💰 **Tarif Tiket Masuk**: Rp {new_dest.base_price:,.0f}\n"
+            f"📝 **Deskripsi**: {new_dest.description}\n\n"
+        )
+        if is_alert_range:
+            reply_msg += (
+                f"🔔 **Status Notifikasi Role Guest**: Karena destinasi ini dijadwalkan dibuka dalam rentang "
+                f"{'1 hari (besok)' if days_diff <= 1 else '1 bulan ke depan'}, objek wisata ini **otomatis dipromosikan di Beranda MegiLoka** "
+                f"dan **memberikan sinyal notifikasi aktif kepada wisatawan (guest)**! 🚀"
+            )
+        else:
+            reply_msg += (
+                f"🌟 **Status Master Data**: Destinasi baru ini telah terdaftar di database untuk persiapan peluncuran wisata 1 tahun ke depan."
+            )
+
+        return jsonify({
+            'success': True,
+            'action_executed': 'add_destination',
+            'reply': reply_msg,
+            'item': {
+                'id': new_dest.id,
+                'type': 'destination',
+                'name': new_dest.name,
+                'code': new_dest.code,
+                'opening_date': str(new_dest.opening_date),
+                'days_left': days_diff,
+                'is_spotlight': is_alert_range,
+                'badge': 'H-1 (BESOK!)' if days_diff <= 1 else f'H-{days_diff} (1 BULAN LAGI)' if days_diff <= 30 else f'{days_diff} HARI'
+            }
+        })
+
+    # DEFAULT: Conversational Customer Service Assistant
+    try:
+        result = answer_question(user_msg, holiday_view=holiday_feed.view)
+    except ModelUnavailable:
+        app.logger.exception('Megi local model unavailable')
+        return jsonify(success=False, reply='Model Megi belum tersedia. Pengelola perlu menjalankan training: python backend/train_ai.py.'), 503
+    return jsonify(success=True, action_executed='chat', **result)
+
+if __name__ == '__main__':
+    seed_database()
+    host = os.getenv('HOST', '127.0.0.1')
+    port = int(os.getenv('PORT', 5000))
+    print("=======================================================")
+    print(" MegiLoka - E-Ticketing & PAD System Kab. Lamongan ")
+    print(f" Server Running on: http://{host}:{port} ")
+    print("=======================================================")
+    app.run(host=host, port=port, debug=True)

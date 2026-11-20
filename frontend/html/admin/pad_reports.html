@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+
+{% block title %}Laporan PAD Terpusat - MegiLoka{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4 px-lg-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold text-dark mb-1"><i class="fa-solid fa-file-invoice-dollar text-success me-2"></i>Laporan Rekapitulasi PAD Terpusat</h2>
+            <p class="text-muted mb-0">Rekap harian pendapatan retribusi objek wisata daerah untuk pengawasan Dinas Pariwisata.</p>
+        </div>
+        <a href="{{ url_for('export_pad_csv') }}" class="btn btn-success rounded-pill fw-bold">
+            <i class="fa-solid fa-file-csv me-1"></i>Unduh Laporan CSV
+        </a>
+    </div>
+
+    <!-- Filter Bar Card -->
+    <div class="card border-0 shadow-sm rounded-4 p-3 mb-4 bg-white">
+        <form action="{{ url_for('pad_reports') }}" method="GET" class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label small fw-semibold text-muted">Tanggal Mulai:</label>
+                <input type="date" name="start_date" value="{{ start_date }}" class="form-control rounded-3">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small fw-semibold text-muted">Tanggal Sampai:</label>
+                <input type="date" name="end_date" value="{{ end_date }}" class="form-control rounded-3">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small fw-semibold text-muted">Destinasi Wisata:</label>
+                <select name="dest_id" class="form-select rounded-3">
+                    <option value="">Semua Destinasi</option>
+                    {% for d in destinations %}
+                    <option value="{{ d.id }}" {% if selected_dest_id == d.id %}selected{% endif %}>{{ d.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3 d-flex gap-2">
+                <button type="submit" class="btn btn-primary flex-fill rounded-3">
+                    <i class="fa-solid fa-filter me-1"></i>Filter
+                </button>
+                <a href="{{ url_for('pad_reports') }}" class="btn btn-outline-secondary rounded-3">Reset</a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Summary Widgets Row -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-6">
+            <div class="p-3 bg-light rounded-4 border d-flex justify-content-between align-items-center">
+                <div>
+                    <span class="text-muted small d-block">TOTAL TIKET TERJUAL (BERDASARKAN FILTER)</span>
+                    <h3 class="fw-bold text-dark mb-0">{{ "{:,.0f}".format(total_tickets) }} Tiket</h3>
+                </div>
+                <i class="fa-solid fa-ticket fs-2 text-primary opacity-50"></i>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="p-3 bg-light rounded-4 border d-flex justify-content-between align-items-center">
+                <div>
+                    <span class="text-muted small d-block">TOTAL REKAP PENDAPATAN (PAD)</span>
+                    <h3 class="fw-bold text-success mb-0">Rp {{ "{:,.0f}".format(total_pad_revenue) }}</h3>
+                </div>
+                <i class="fa-solid fa-vault fs-2 text-success opacity-50"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Yearly Breakdown Chart Row -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
+                <h5 class="fw-bold text-dark mb-3">Kontribusi Pendapatan PAD per Destinasi (Tahun {{ current_year }})</h5>
+                <canvas id="yearlyBreakdownChart" height="100"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const ctx = document.getElementById('yearlyBreakdownChart').getContext('2d');
+            const rawData = {{ yearly_breakdown | tojson | safe }};
+            
+            const monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+            const theme = getComputedStyle(document.documentElement);
+            const colors = ['navy', 'sky', 'deep-blue', 'ice', 'slate-blue', 'mist', 'teal']
+                .map(shade => theme.getPropertyValue('--palette-' + shade).trim());
+            
+            const datasets = Object.keys(rawData).map((destName, index) => {
+                return {
+                    label: destName,
+                    data: rawData[destName],
+                    backgroundColor: colors[index % colors.length],
+                    borderWidth: 1
+                };
+            });
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: monthLabels,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: { stacked: true },
+                        y: { 
+                            stacked: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return 'Rp ' + value.toLocaleString('id-ID');
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': Rp ' + context.raw.toLocaleString('id-ID');
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        });
+    </script>
+
+    <!-- Data Table -->
+    <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Tanggal Laporan</th>
+                        <th>Kode</th>
+                        <th>Objek Wisata</th>
+                        <th class="text-center">Tiket Terjual</th>
+                        <th class="text-end">Total Revenue (PAD Rp)</th>
+                        <th>Status Waktu</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if recaps %}
+                        {% for r in recaps %}
+                        <tr>
+                            <td class="fw-semibold text-dark">{{ r.report_date.strftime('%d-%m-%Y') }}</td>
+                            <td><span class="badge bg-light text-primary border font-monospace">{{ r.destination.code }}</span></td>
+                            <td class="fw-bold text-dark">{{ r.destination.name }}</td>
+                            <td class="text-center font-monospace fw-semibold">{{ r.total_tickets_sold }}</td>
+                            <td class="text-end fw-bold text-success">Rp {{ "{:,.0f}".format(r.total_revenue) }}</td>
+                            <td class="small text-muted">{{ r.created_at.strftime('%H:%M:%S') }}</td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center py-4 text-muted">Belum ada data laporan rekapitulasi PAD untuk kriteria ini.</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

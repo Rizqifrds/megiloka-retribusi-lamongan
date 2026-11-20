@@ -1,0 +1,37 @@
+{% if holiday_updates.matches %}
+<div class="row g-3 mb-3">
+    {% for item in holiday_updates.matches %}
+    <div class="col-md-6">
+        <article class="card card-megiloka h-100 p-3">
+            <div><span class="badge badge-lamongan-accent">{{ item.kind }}</span></div>
+            <h3 class="h5 mt-2 mb-1">{{ item.name }}</h3>
+            <p class="text-muted small mb-1">{{ item.date }} · {{ item.holiday }}</p>
+            <p class="text-muted small mb-2">
+                {{ 'Periode promo' if item.kind == 'Promo' else 'Jadwal event' }}
+                <time datetime="{{ item.start }}">{{ item.start.split('-') | reverse | join('/') }}</time>
+                {% if item.end != item.start %}– <time datetime="{{ item.end }}">{{ item.end.split('-') | reverse | join('/') }}</time>{% endif %}
+            </p>
+            <a class="small fw-semibold align-self-start" href="{{ item.url }}">Lihat pengumuman resmi</a>
+        </article>
+    </div>
+    {% endfor %}
+</div>
+{% elif holiday_updates.sources_ready and holiday_updates.holidays %}
+<p class="text-muted small mb-2">Belum ada promo atau event terkonfirmasi yang bertepatan dengan libur nasional mendatang.</p>
+{% endif %}
+
+{% if not holiday_updates.sources_ready or not holiday_updates.holidays %}
+<p class="text-muted small mb-2">Pemeriksaan sumber belum lengkap. Data yang sudah ditemukan ditampilkan di sini.</p>
+{% endif %}
+
+{% if holiday_updates.holidays %}
+<p class="small fw-semibold mb-1">Libur nasional terdekat</p>
+<ul class="list-inline small mb-2">
+    {% for day in holiday_updates.holidays %}
+    <li class="list-inline-item me-3"><a href="{{ day.url }}">{{ day.date }}</a> · {{ day.name }}</li>
+    {% endfor %}
+</ul>
+{% endif %}
+{% if holiday_updates.checked %}
+<p class="small text-muted mb-0">Sumber diperiksa {{ holiday_updates.checked }}.</p>
+{% endif %}

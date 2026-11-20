@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard Analytics PAD - Dinas Pariwisata Lamongan{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4 px-lg-5">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <span class="badge bg-primary px-3 py-2 rounded-pill mb-1">DISPARBUD KABUPATEN LAMONGAN</span>
+            <h2 class="fw-bold text-dark mb-0"><i class="fa-solid fa-gauge text-primary me-2"></i>Dashboard Pelaporan PAD Terpusat</h2>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('pad_reports') }}" class="btn btn-outline-primary rounded-pill fw-semibold">
+                <i class="fa-solid fa-file-invoice-dollar me-1"></i>Laporan Detail PAD
+            </a>
+            <a href="{{ url_for('export_pad_csv') }}" class="btn btn-success rounded-pill fw-semibold">
+                <i class="fa-solid fa-file-excel me-1"></i>Ekspor CSV PAD
+            </a>
+        </div>
+    </div>
+
+    <!-- KPI Summary Row -->
+    <div class="row g-4 mb-4">
+        <div class="col-xl-3 col-md-6">
+            <div class="stat-widget shadow-sm" style="border-left-color: var(--palette-deep-blue);">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="text-muted small text-uppercase font-monospace fw-semibold">PAD HARI INI</span>
+                        <h3 class="fw-bold text-primary mb-0 mt-1">Rp {{ "{:,.0f}".format(today_revenue) }}</h3>
+                    </div>
+                    <div class="stat-icon">
+                        <i class="fa-solid fa-money-bill-wave"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6">
+            <div class="stat-widget shadow-sm" style="border-left-color: var(--palette-teal);">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="text-muted small text-uppercase font-monospace fw-semibold">TOTAL AKUMULASI PAD</span>
+                        <h3 class="fw-bold text-primary mb-0 mt-1">Rp {{ "{:,.0f}".format(total_revenue) }}</h3>
+                    </div>
+                    <div class="stat-icon">
+                        <i class="fa-solid fa-vault"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6">
+            <div class="stat-widget shadow-sm" style="border-left-color: var(--palette-sky);">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="text-muted small text-uppercase font-monospace fw-semibold">TIKET TERJUAL</span>
+                        <h3 class="fw-bold text-primary mb-0 mt-1">{{ "{:,.0f}".format(total_tickets_sold) }}</h3>
+                    </div>
+                    <div class="stat-icon">
+                        <i class="fa-solid fa-ticket"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6">
+            <div class="stat-widget shadow-sm" style="border-left-color: var(--palette-slate-blue);">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="text-muted small text-uppercase font-monospace fw-semibold">PAD BULAN INI</span>
+                        <h3 class="fw-bold text-primary mb-0 mt-1">Rp {{ "{:,.0f}".format(this_month_revenue) }}</h3>
+                    </div>
+                    <div class="stat-icon">
+                        <i class="fa-solid fa-chart-line"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Insights Banner -->
+    <div class="alert alert-info shadow-sm border-0 rounded-4 d-flex align-items-center mb-4">
+        <div class="me-3 fs-3">🤖</div>
+        <div>
+            <h6 class="fw-bold mb-1">MegiLoka AI Insights</h6>
+            <p class="mb-0">{{ ai_insight }}</p>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="row g-4 mb-4">
+        <!-- Revenue per Destination Bar Chart -->
+        <div class="col-lg-7">
+            <div class="card border-0 shadow-sm rounded-4 p-4 h-100 bg-white">
+                <h5 class="fw-bold text-dark mb-3"><i class="fa-solid fa-chart-column text-primary me-2"></i>Kontribusi Pendapatan PAD per Destinasi</h5>
+                <div style="position: relative; height: 300px;">
+                    <canvas id="destRevenueChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- 7-Day Revenue Trend Line Chart -->
+        <div class="col-lg-5">
+            <div class="card border-0 shadow-sm rounded-4 p-4 h-100 bg-white">
+                <h5 class="fw-bold text-dark mb-3"><i class="fa-solid fa-chart-line text-success me-2"></i>Tren Pendapatan Harian (7 Hari)</h5>
+                <div style="position: relative; height: 300px;">
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Transactions Table -->
+    <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
+        <h5 class="fw-bold text-dark mb-3"><i class="fa-solid fa-clock-rotate-left text-primary me-2"></i>Audit Log Transaksi E-Ticketing Terbaru</h5>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Invoice</th>
+                        <th>Destinasi</th>
+                        <th>Nama Pengunjung</th>
+                        <th>Metode</th>
+                        <th>Total Retribusi</th>
+                        <th>Waktu Transaksi</th>
+                        <th>Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in recent_transactions %}
+                    <tr>
+                        <td class="fw-bold font-monospace text-primary">{{ t.invoice_number }}</td>
+                        <td>{{ t.destination.name }}</td>
+                        <td>{{ t.visitor_name }}</td>
+                        <td>
+                            <span class="badge bg-light text-dark border">{{ t.payment_method.upper() }}</span>
+                        </td>
+                        <td class="fw-bold text-success">Rp {{ "{:,.0f}".format(t.total_amount) }}</td>
+                        <td class="small text-muted">{{ t.transaction_time.strftime('%d-%m-%Y %H:%M') }}</td>
+                        <td>
+                            <a href="{{ url_for('ticket_view', invoice_number=t.invoice_number) }}" class="btn btn-sm btn-outline-primary rounded-pill">
+                                <i class="fa-solid fa-eye me-1"></i>Tiket
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const theme = getComputedStyle(document.documentElement);
+    const deepBlue = theme.getPropertyValue('--palette-deep-blue').trim();
+    const slateBlue = theme.getPropertyValue('--palette-slate-blue').trim();
+    const lightBlue = theme.getPropertyValue('--palette-ice').trim();
+
+    // 1. Bar Chart Revenue per Destination
+    const ctxBar = document.getElementById('destRevenueChart').getContext('2d');
+    new Chart(ctxBar, {
+        type: 'bar',
+        data: {
+            labels: {{ chart_labels | tojson }},
+            datasets: [{
+                label: 'Pendapatan PAD (Rp)',
+                data: {{ chart_revenue_data | tojson }},
+                backgroundColor: slateBlue,
+                borderColor: deepBlue,
+                borderWidth: 1,
+                borderRadius: 8
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) { return 'Rp ' + (value/1000000).toFixed(1) + ' Jt'; }
+                    }
+                }
+            }
+        }
+    });
+
+    // 2. Line Chart 7-Day Trend
+    const ctxLine = document.getElementById('trendChart').getContext('2d');
+    new Chart(ctxLine, {
+        type: 'line',
+        data: {
+            labels: {{ trend_labels | tojson }},
+            datasets: [{
+                label: 'Total PAD Harian (Rp)',
+                data: {{ trend_revenue | tojson }},
+                borderColor: deepBlue,
+                backgroundColor: lightBlue,
+                fill: true,
+                tension: 0.35,
+                pointRadius: 5
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

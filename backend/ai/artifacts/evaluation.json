@@ -1,0 +1,707 @@
+{
+  "model": "tfidf-logistic-regression",
+  "trained_at_utc": "2026-11-05T07:29:51.894159+00:00",
+  "seed": 42,
+  "python": "3.12.10",
+  "sklearn": "1.9.1",
+  "train_count": 256,
+  "test_count": 64,
+  "train_class_counts": {
+    "event_schedule": 32,
+    "event_detail": 32,
+    "destination_info": 32,
+    "ticket_price": 32,
+    "booking": 32,
+    "greeting": 32,
+    "opening_hours": 32,
+    "out_of_scope": 32
+  },
+  "test_class_counts": {
+    "event_schedule": 8,
+    "event_detail": 8,
+    "destination_info": 8,
+    "ticket_price": 8,
+    "booking": 8,
+    "greeting": 8,
+    "opening_hours": 8,
+    "out_of_scope": 8
+  },
+  "data_sha256": {
+    "train.json": "7389381a1373f6fc06f49a82462f708f8d799b1e45ce5001f6cf1be82286a01e",
+    "test.json": "0681f845cf526ba44d70cd5f365417f119749103f1cbf57e28a85822754b32ba"
+  },
+  "accuracy": 0.921875,
+  "macro_f1": 0.9064171122994652,
+  "runtime_accuracy_including_abstentions": 0.921875,
+  "abstentions": 1,
+  "labels": [
+    "booking",
+    "destination_info",
+    "event_detail",
+    "event_schedule",
+    "greeting",
+    "opening_hours",
+    "out_of_scope",
+    "ticket_price"
+  ],
+  "classification_report": {
+    "booking": {
+      "precision": 0.8888888888888888,
+      "recall": 1.0,
+      "f1-score": 0.9411764705882353,
+      "support": 8.0
+    },
+    "destination_info": {
+      "precision": 0.8888888888888888,
+      "recall": 1.0,
+      "f1-score": 0.9411764705882353,
+      "support": 8.0
+    },
+    "event_detail": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 8.0
+    },
+    "event_schedule": {
+      "precision": 0.8888888888888888,
+      "recall": 1.0,
+      "f1-score": 0.9411764705882353,
+      "support": 8.0
+    },
+    "greeting": {
+      "precision": 0.8888888888888888,
+      "recall": 1.0,
+      "f1-score": 0.9411764705882353,
+      "support": 8.0
+    },
+    "opening_hours": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 8.0
+    },
+    "out_of_scope": {
+      "precision": 1.0,
+      "recall": 0.375,
+      "f1-score": 0.5454545454545454,
+      "support": 8.0
+    },
+    "ticket_price": {
+      "precision": 0.8888888888888888,
+      "recall": 1.0,
+      "f1-score": 0.9411764705882353,
+      "support": 8.0
+    },
+    "accuracy": 0.921875,
+    "macro avg": {
+      "precision": 0.9305555555555556,
+      "recall": 0.921875,
+      "f1-score": 0.9064171122994652,
+      "support": 64.0
+    },
+    "weighted avg": {
+      "precision": 0.9305555555555556,
+      "recall": 0.921875,
+      "f1-score": 0.9064171122994652,
+      "support": 64.0
+    }
+  },
+  "confusion_matrix": [
+    [
+      8,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      8,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      8,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      8,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      8,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      8,
+      0,
+      0
+    ],
+    [
+      1,
+      1,
+      0,
+      1,
+      1,
+      0,
+      3,
+      1
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      8
+    ]
+  ],
+  "predictions": [
+    {
+      "text": "Bisa tampilkan agenda untuk esok hari?",
+      "expected": "event_schedule",
+      "predicted": "event_schedule",
+      "runtime_intent": "event_schedule",
+      "confidence": 0.6294,
+      "correct": true
+    },
+    {
+      "text": "Apa kegiatan pariwisata pada akhir pekan ini?",
+      "expected": "event_schedule",
+      "predicted": "event_schedule",
+      "runtime_intent": "event_schedule",
+      "confidence": 0.9106,
+      "correct": true
+    },
+    {
+      "text": "Minta daftar event bulan Desember 2026",
+      "expected": "event_schedule",
+      "predicted": "event_schedule",
+      "runtime_intent": "event_schedule",
+      "confidence": 0.9528,
+      "correct": true
+    },
+    {
+      "text": "Adakah festival yang dijadwalkan bulan depan?",
+      "expected": "event_schedule",
+      "predicted": "event_schedule",
+      "runtime_intent": "event_schedule",
+      "confidence": 0.8857,
+      "correct": true
+    },
+    {
+      "text": "Saya mencari acara untuk minggu ini",
+      "expected": "event_schedule",
+      "predicted": "event_schedule",
+      "runtime_intent": "event_schedule",
+      "confidence": 0.7774,
+      "correct": true
+    },
+    {
+      "text": "Agenda wisata terdekat apa ya?",
+      "expected": "event_schedule",
+      "predicted": "event_schedule",
+      "runtime_intent": "event_schedule",
+      "confidence": 0.7926,
+      "correct": true
+    },
+    {
+      "text": "Event untuk tanggal 7 November 2026 apa?",
+      "expected": "event_schedule",
+      "predicted": "event_schedule",
+      "runtime_intent": "event_schedule",
+      "confidence": 0.8942,
+      "correct": true
+    },
+    {
+      "text": "Tunjukkan kegiatan yang akan berlangsung di Lamongan",
+      "expected": "event_schedule",
+      "predicted": "event_schedule",
+      "runtime_intent": "event_schedule",
+      "confidence": 0.6987,
+      "correct": true
+    },
+    {
+      "text": "Festival Kupatan diselenggarakan kapan ya?",
+      "expected": "event_detail",
+      "predicted": "event_detail",
+      "runtime_intent": "event_detail",
+      "confidence": 0.9743,
+      "correct": true
+    },
+    {
+      "text": "Di mana tempat berlangsungnya Festival Pantura?",
+      "expected": "event_detail",
+      "predicted": "event_detail",
+      "runtime_intent": "event_detail",
+      "confidence": 0.7847,
+      "correct": true
+    },
+    {
+      "text": "Pukul berapa acara Haul Sunan Drajat akan dimulai?",
+      "expected": "event_detail",
+      "predicted": "event_detail",
+      "runtime_intent": "event_detail",
+      "confidence": 0.9076,
+      "correct": true
+    },
+    {
+      "text": "Apa uraian kegiatan Lamongan Tempo Doeloe?",
+      "expected": "event_detail",
+      "predicted": "event_detail",
+      "runtime_intent": "event_detail",
+      "confidence": 0.7955,
+      "correct": true
+    },
+    {
+      "text": "Kapan tanggal penyelenggaraan kirab budaya?",
+      "expected": "event_detail",
+      "predicted": "event_detail",
+      "runtime_intent": "event_detail",
+      "confidence": 0.8062,
+      "correct": true
+    },
+    {
+      "text": "Bisa jelaskan Festival Bonsai Nasional?",
+      "expected": "event_detail",
+      "predicted": "event_detail",
+      "runtime_intent": "event_detail",
+      "confidence": 0.587,
+      "correct": true
+    },
+    {
+      "text": "Masih berapa hari menuju event Tari Boran?",
+      "expected": "event_detail",
+      "predicted": "event_detail",
+      "runtime_intent": "event_detail",
+      "confidence": 0.5728,
+      "correct": true
+    },
+    {
+      "text": "Apakah event Festival Bandeng sudah selesai?",
+      "expected": "event_detail",
+      "predicted": "event_detail",
+      "runtime_intent": "event_detail",
+      "confidence": 0.7927,
+      "correct": true
+    },
+    {
+      "text": "Letak wisata Pantai Kutang sebelah mana?",
+      "expected": "destination_info",
+      "predicted": "destination_info",
+      "runtime_intent": "destination_info",
+      "confidence": 0.9473,
+      "correct": true
+    },
+    {
+      "text": "Minta informasi tentang Wisata Bahari Lamongan",
+      "expected": "destination_info",
+      "predicted": "destination_info",
+      "runtime_intent": "destination_info",
+      "confidence": 0.9348,
+      "correct": true
+    },
+    {
+      "text": "Tempat rekreasi apa yang ada di Lamongan?",
+      "expected": "destination_info",
+      "predicted": "destination_info",
+      "runtime_intent": "destination_info",
+      "confidence": 0.9131,
+      "correct": true
+    },
+    {
+      "text": "Saya mencari alamat lengkap Goa Maharani",
+      "expected": "destination_info",
+      "predicted": "destination_info",
+      "runtime_intent": "destination_info",
+      "confidence": 0.833,
+      "correct": true
+    },
+    {
+      "text": "Bisa ceritakan daya tarik destinasi WEGO?",
+      "expected": "destination_info",
+      "predicted": "destination_info",
+      "runtime_intent": "destination_info",
+      "confidence": 0.7531,
+      "correct": true
+    },
+    {
+      "text": "Destinasi religi yang tercatat apa saja?",
+      "expected": "destination_info",
+      "predicted": "destination_info",
+      "runtime_intent": "destination_info",
+      "confidence": 0.7755,
+      "correct": true
+    },
+    {
+      "text": "Waduk Gondang itu lokasinya di mana ya?",
+      "expected": "destination_info",
+      "predicted": "destination_info",
+      "runtime_intent": "destination_info",
+      "confidence": 0.8221,
+      "correct": true
+    },
+    {
+      "text": "Tampilkan pilihan wisata bahari",
+      "expected": "destination_info",
+      "predicted": "destination_info",
+      "runtime_intent": "destination_info",
+      "confidence": 0.5263,
+      "correct": true
+    },
+    {
+      "text": "Kalau masuk Pantai Kutang biayanya berapa?",
+      "expected": "ticket_price",
+      "predicted": "ticket_price",
+      "runtime_intent": "ticket_price",
+      "confidence": 0.8858,
+      "correct": true
+    },
+    {
+      "text": "Berapakah tarif karcis WBL untuk dewasa?",
+      "expected": "ticket_price",
+      "predicted": "ticket_price",
+      "runtime_intent": "ticket_price",
+      "confidence": 0.8944,
+      "correct": true
+    },
+    {
+      "text": "Saya mencari info diskon tiket wisata",
+      "expected": "ticket_price",
+      "predicted": "ticket_price",
+      "runtime_intent": "ticket_price",
+      "confidence": 0.4397,
+      "correct": true
+    },
+    {
+      "text": "Minta rincian harga tiket Maharani Zoo",
+      "expected": "ticket_price",
+      "predicted": "ticket_price",
+      "runtime_intent": "ticket_price",
+      "confidence": 0.8014,
+      "correct": true
+    },
+    {
+      "text": "Berapa rupiah yang dibayar untuk masuk WEGO?",
+      "expected": "ticket_price",
+      "predicted": "ticket_price",
+      "runtime_intent": "ticket_price",
+      "confidence": 0.7957,
+      "correct": true
+    },
+    {
+      "text": "Adakah promo tiket Waduk Gondang sekarang?",
+      "expected": "ticket_price",
+      "predicted": "ticket_price",
+      "runtime_intent": "ticket_price",
+      "confidence": 0.8315,
+      "correct": true
+    },
+    {
+      "text": "Tiket anak Sunan Drajat harganya berapa ya?",
+      "expected": "ticket_price",
+      "predicted": "ticket_price",
+      "runtime_intent": "ticket_price",
+      "confidence": 0.7754,
+      "correct": true
+    },
+    {
+      "text": "Boleh lihat daftar tarif masuk destinasi?",
+      "expected": "ticket_price",
+      "predicted": "ticket_price",
+      "runtime_intent": "ticket_price",
+      "confidence": 0.7469,
+      "correct": true
+    },
+    {
+      "text": "Tolong ajari saya memesan e-ticket",
+      "expected": "booking",
+      "predicted": "booking",
+      "runtime_intent": "booking",
+      "confidence": 0.6883,
+      "correct": true
+    },
+    {
+      "text": "Bagaimana alur beli tiket di website ini?",
+      "expected": "booking",
+      "predicted": "booking",
+      "runtime_intent": "booking",
+      "confidence": 0.9269,
+      "correct": true
+    },
+    {
+      "text": "Saya mau reservasi kunjungan wisata",
+      "expected": "booking",
+      "predicted": "booking",
+      "runtime_intent": "booking",
+      "confidence": 0.7559,
+      "correct": true
+    },
+    {
+      "text": "Apa langkah untuk mendapatkan tiket QR?",
+      "expected": "booking",
+      "predicted": "booking",
+      "runtime_intent": "booking",
+      "confidence": 0.7558,
+      "correct": true
+    },
+    {
+      "text": "Bisa jelaskan opsi pembayaran pemesanan?",
+      "expected": "booking",
+      "predicted": "booking",
+      "runtime_intent": "booking",
+      "confidence": 0.8646,
+      "correct": true
+    },
+    {
+      "text": "Di mana saya mengisi pesanan tiket?",
+      "expected": "booking",
+      "predicted": "booking",
+      "runtime_intent": "booking",
+      "confidence": 0.8163,
+      "correct": true
+    },
+    {
+      "text": "Panduan membeli tiket secara daring dong",
+      "expected": "booking",
+      "predicted": "booking",
+      "runtime_intent": "booking",
+      "confidence": 0.9103,
+      "correct": true
+    },
+    {
+      "text": "Gimana proses booking wisata di MegiLoka?",
+      "expected": "booking",
+      "predicted": "booking",
+      "runtime_intent": "booking",
+      "confidence": 0.7378,
+      "correct": true
+    },
+    {
+      "text": "Hai Megi, salam kenal ya",
+      "expected": "greeting",
+      "predicted": "greeting",
+      "runtime_intent": "greeting",
+      "confidence": 0.9887,
+      "correct": true
+    },
+    {
+      "text": "Selamat pagi asisten MegiLoka",
+      "expected": "greeting",
+      "predicted": "greeting",
+      "runtime_intent": "greeting",
+      "confidence": 0.9701,
+      "correct": true
+    },
+    {
+      "text": "Terima kasih banyak sudah membantu",
+      "expected": "greeting",
+      "predicted": "greeting",
+      "runtime_intent": "greeting",
+      "confidence": 0.8409,
+      "correct": true
+    },
+    {
+      "text": "Assalamualaikum, boleh saya tanya?",
+      "expected": "greeting",
+      "predicted": "greeting",
+      "runtime_intent": "greeting",
+      "confidence": 0.932,
+      "correct": true
+    },
+    {
+      "text": "Jelaskan kemampuanmu sebagai asisten",
+      "expected": "greeting",
+      "predicted": "greeting",
+      "runtime_intent": "greeting",
+      "confidence": 0.3886,
+      "correct": true
+    },
+    {
+      "text": "Halo bot, permisi",
+      "expected": "greeting",
+      "predicted": "greeting",
+      "runtime_intent": "greeting",
+      "confidence": 0.8619,
+      "correct": true
+    },
+    {
+      "text": "Matur nuwun atas infonya",
+      "expected": "greeting",
+      "predicted": "greeting",
+      "runtime_intent": "greeting",
+      "confidence": 0.8049,
+      "correct": true
+    },
+    {
+      "text": "Siapa kamu dan bisa membantu apa?",
+      "expected": "greeting",
+      "predicted": "greeting",
+      "runtime_intent": "greeting",
+      "confidence": 0.7297,
+      "correct": true
+    },
+    {
+      "text": "Jam berapa destinasi WBL mulai buka?",
+      "expected": "opening_hours",
+      "predicted": "opening_hours",
+      "runtime_intent": "opening_hours",
+      "confidence": 0.8524,
+      "correct": true
+    },
+    {
+      "text": "Sampai pukul berapa Pantai Kutang beroperasi?",
+      "expected": "opening_hours",
+      "predicted": "opening_hours",
+      "runtime_intent": "opening_hours",
+      "confidence": 0.6185,
+      "correct": true
+    },
+    {
+      "text": "Adakah informasi hari buka Goa Maharani?",
+      "expected": "opening_hours",
+      "predicted": "opening_hours",
+      "runtime_intent": "opening_hours",
+      "confidence": 0.4299,
+      "correct": true
+    },
+    {
+      "text": "Sunan Drajat bisa dikunjungi jam berapa?",
+      "expected": "opening_hours",
+      "predicted": "opening_hours",
+      "runtime_intent": "opening_hours",
+      "confidence": 0.8543,
+      "correct": true
+    },
+    {
+      "text": "Tolong info waktu operasional WEGO",
+      "expected": "opening_hours",
+      "predicted": "opening_hours",
+      "runtime_intent": "opening_hours",
+      "confidence": 0.468,
+      "correct": true
+    },
+    {
+      "text": "Apakah Pantai Lorena tutup sore hari?",
+      "expected": "opening_hours",
+      "predicted": "opening_hours",
+      "runtime_intent": "opening_hours",
+      "confidence": 0.802,
+      "correct": true
+    },
+    {
+      "text": "Bagaimana jadwal buka tutup Waduk Gondang?",
+      "expected": "opening_hours",
+      "predicted": "opening_hours",
+      "runtime_intent": "opening_hours",
+      "confidence": 0.8993,
+      "correct": true
+    },
+    {
+      "text": "Loket Sukodadi Carnival buka pagi atau malam?",
+      "expected": "opening_hours",
+      "predicted": "opening_hours",
+      "runtime_intent": "opening_hours",
+      "confidence": 0.7395,
+      "correct": true
+    },
+    {
+      "text": "Bisakah kamu mengerjakan tugas fisika?",
+      "expected": "out_of_scope",
+      "predicted": "greeting",
+      "runtime_intent": "greeting",
+      "confidence": 0.5005,
+      "correct": false
+    },
+    {
+      "text": "Apa resep membuat kue cokelat?",
+      "expected": "out_of_scope",
+      "predicted": "out_of_scope",
+      "runtime_intent": "out_of_scope",
+      "confidence": 0.6557,
+      "correct": true
+    },
+    {
+      "text": "Berapa skor basket tadi malam?",
+      "expected": "out_of_scope",
+      "predicted": "ticket_price",
+      "runtime_intent": "uncertain",
+      "confidence": 0.3175,
+      "correct": false
+    },
+    {
+      "text": "Tolong tuliskan kode Java untuk sorting",
+      "expected": "out_of_scope",
+      "predicted": "out_of_scope",
+      "runtime_intent": "out_of_scope",
+      "confidence": 0.6914,
+      "correct": true
+    },
+    {
+      "text": "Bagaimana cara mengobati batuk?",
+      "expected": "out_of_scope",
+      "predicted": "booking",
+      "runtime_intent": "booking",
+      "confidence": 0.5495,
+      "correct": false
+    },
+    {
+      "text": "Prediksi investasi emas minggu depan",
+      "expected": "out_of_scope",
+      "predicted": "event_schedule",
+      "runtime_intent": "event_schedule",
+      "confidence": 0.4373,
+      "correct": false
+    },
+    {
+      "text": "Ceritakan tentang galaksi Andromeda",
+      "expected": "out_of_scope",
+      "predicted": "destination_info",
+      "runtime_intent": "destination_info",
+      "confidence": 0.4591,
+      "correct": false
+    },
+    {
+      "text": "Bantu menulis CV untuk melamar kerja",
+      "expected": "out_of_scope",
+      "predicted": "out_of_scope",
+      "runtime_intent": "out_of_scope",
+      "confidence": 0.3339,
+      "correct": true
+    }
+  ],
+  "limitations": "Small manually authored educational dataset, not a real-user benchmark. Test set is evaluation-only. Runtime answers also use deterministic date/entity parsing and live database facts."
+}

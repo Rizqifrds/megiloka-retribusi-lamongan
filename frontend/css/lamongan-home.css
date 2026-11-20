@@ -1,0 +1,78 @@
+/* Scoped homepage presentation; shared screens retain their existing styles. */
+.lamongan-hero {
+    --ink: var(--palette-navy);
+    --ocean: var(--palette-deep-blue);
+    --hero-surface: color-mix(in srgb, var(--palette-ice) 56%, white);
+    color: var(--ink);
+    background: var(--hero-surface);
+    padding: 48px 0 0;
+    margin-top: 0;
+    border-bottom: 1px solid var(--palette-ice);
+}
+.lamongan-hero-grid { display: grid; grid-template-columns: 1.05fr 1fr; gap: 44px; align-items: center; }
+.lamongan-hero-copy { padding: 24px 0 36px; }
+.lamongan-eyebrow { display: inline-flex; align-items: center; gap: 10px; font-size: .73rem; font-weight: 700; letter-spacing: .19em; }
+.lamongan-eyebrow > span { width: 25px; height: 3px; background: var(--palette-teal); }
+.lamongan-hero h1 { font-size: clamp(2.65rem, 4.4vw, 4.5rem); line-height: 1.08; font-weight: 600; letter-spacing: -.045em; margin: 24px 0; }
+.lamongan-hero h1 > span { color: var(--ocean); position: relative; display: inline-block; }
+.lamongan-hero h1 > span::after { content: ''; display: block; height: 6px; margin-top: 4px; background: var(--palette-sky); border-radius: 50%; transform: rotate(-2deg); }
+.lamongan-hero-description { max-width: 455px; font-size: 1rem; line-height: 1.85; color: var(--text-muted); margin: 0 0 28px; }
+.lamongan-hero-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+.lamongan-hero-actions a { display: inline-flex; align-items: center; justify-content: center; gap: 16px; min-height: 52px; padding: 13px 22px; border-radius: 10px; text-decoration: none; font-size: .9rem; font-weight: 600; transition: background .2s, transform .2s; }
+.lamongan-action-primary { background: var(--ocean); color: #fff; border: 1px solid var(--ocean); box-shadow: 0 6px 16px #0a41741a; }
+.lamongan-action-primary:hover { background: var(--palette-navy); color: #fff; transform: translateY(-2px); }
+.lamongan-action-secondary { color: var(--ink); border: 1px solid var(--palette-slate-blue); background: transparent; }
+.lamongan-action-secondary:hover { color: var(--ink); background: var(--palette-ice); transform: translateY(-2px); }
+.lamongan-hero a:focus-visible { outline: 3px solid var(--palette-deep-blue); outline-offset: 5px; }
+.lamongan-hero-note { display: flex; align-items: center; gap: 9px; margin-top: 22px; font-size: .73rem; line-height: 1.6; color: var(--text-muted); }
+.lamongan-hero-note i { color: var(--ocean); }
+.lamongan-hero-visual { position: relative; min-width: 0; height: 475px; margin: 0 0 24px; isolation: isolate; }
+.lamongan-hero-visual > img { width: 100%; height: 100%; object-fit: cover; object-position: 37% center; border-radius: 110px 18px 18px 18px; background: var(--palette-ice); }
+.lamongan-hero-visual::after { content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none; border-radius: 110px 18px 18px 18px; background: linear-gradient(180deg, transparent 38%, #001d39f2 100%); }
+.lamongan-dolen-stamp { position: absolute; top: 20px; right: -14px; z-index: 1; display: flex; align-items: center; justify-content: center; gap: 5px; width: 100px; height: 100px; background: var(--palette-sky); color: var(--palette-navy); border: 5px solid var(--hero-surface); border-radius: 50%; transform: rotate(11deg); box-shadow: 0 4px 12px #001d3912; }
+.lamongan-dolen-stamp i { font-size: 1.2rem; }
+.lamongan-dolen-stamp span { font-family: 'Outfit', sans-serif; font-size: 1.28rem; line-height: 1.05; font-weight: 700; }
+.lamongan-photo-caption { position: absolute; bottom: 48px; left: 28px; right: 20px; z-index: 1; color: #fff; }
+.lamongan-photo-location { display: flex; gap: 7px; align-items: center; font-size: .63rem; letter-spacing: .13em; font-weight: 600; color: var(--palette-ice); }
+.lamongan-photo-caption strong { display: block; font-family: 'Outfit', sans-serif; font-size: 1.85rem; font-weight: 500; line-height: 1.15; margin: 12px 0 8px; }
+.lamongan-photo-caption > span:last-child { font-size: .74rem; color: var(--lamongan-blue-light); }
+.lamongan-photo-credit { position: absolute; bottom: 13px; left: 28px; z-index: 1; font-size: .6rem; color: #fff; text-decoration: underline; text-underline-offset: 3px; }
+.lamongan-photo-credit:hover { color: var(--palette-ice); }
+.lamongan-discovery-strip { display: grid; grid-template-columns: 1.35fr 1fr 1fr 1fr; gap: 22px; align-items: center; padding: 28px 0 30px; border-top: 1px solid var(--palette-mist); margin-top: 12px; }
+.lamongan-discovery-intro > span { display: block; font-size: .58rem; letter-spacing: .12em; color: var(--text-muted); font-weight: 600; margin-bottom: 6px; }
+.lamongan-discovery-intro strong { font-family: 'Outfit', sans-serif; font-size: 1.15rem; font-weight: 500; }
+.lamongan-discovery-item { display: flex; align-items: center; gap: 13px; }
+.lamongan-discovery-item > i { font-size: 1.15rem; color: var(--ocean); width: 40px; height: 40px; display: grid; place-items: center; flex-shrink: 0; border: 1px solid var(--palette-mist); border-radius: 50%; }
+.lamongan-discovery-item > span { font-size: .78rem; font-weight: 600; }
+.lamongan-discovery-item small { display: block; font-size: .65rem; color: var(--text-muted); font-weight: 400; margin-top: 4px; }
+@media (min-width: 1400px) { .lamongan-hero-grid { gap: 65px; } .lamongan-hero-visual { height: 510px; } }
+@media (max-width: 991.98px) {
+    .lamongan-hero { padding-top: 28px; }
+    .lamongan-hero-grid { gap: 26px; }
+    .lamongan-hero h1 { font-size: 2.8rem; }
+    .lamongan-hero-description { font-size: .9rem; }
+    .lamongan-hero-visual { height: 430px; }
+    .lamongan-hero-actions a { padding: 12px 16px; font-size: .8rem; gap: 10px; }
+    .lamongan-discovery-strip { grid-template-columns: 1fr 1fr; row-gap: 24px; }
+}
+@media (max-width: 767.98px) {
+    .lamongan-hero { padding-top: 16px; }
+    .lamongan-hero-grid { grid-template-columns: 1fr; gap: 4px; }
+    .lamongan-hero-copy { padding: 22px 4px 26px; }
+    .lamongan-hero h1 { font-size: clamp(2.65rem, 9.5vw, 3.6rem); margin: 20px 0; }
+    .lamongan-hero-description { max-width: 520px; font-size: .95rem; line-height: 1.8; }
+    .lamongan-hero-visual { height: 350px; margin: 0 6px 18px 4px; }
+    .lamongan-hero-visual > img { object-position: center 43%; }
+    .lamongan-dolen-stamp { width: 86px; height: 86px; top: 14px; right: -6px; }
+    .lamongan-dolen-stamp span { font-size: 1.1rem; }
+    .lamongan-discovery-strip { gap: 22px 14px; padding: 24px 4px; }
+    .lamongan-discovery-intro { grid-column: 1 / -1; }
+    .lamongan-discovery-item { gap: 8px; }
+    .lamongan-discovery-item small { font-size: .64rem; }
+}
+@media (max-width: 359.98px) {
+    .lamongan-hero-actions { flex-direction: column; }
+    .lamongan-discovery-strip { grid-template-columns: 1fr; }
+    .lamongan-hero h1 { font-size: 2.4rem; }
+}
+@media (prefers-reduced-motion: reduce) { .lamongan-hero-actions a { transition: none; } .lamongan-hero-actions a:hover { transform: none; } }

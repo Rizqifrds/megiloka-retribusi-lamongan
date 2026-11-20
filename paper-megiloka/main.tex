@@ -1,0 +1,612 @@
+\documentclass[runningheads]{llncs}
+
+\usepackage[T1]{fontenc}
+\usepackage{newtxtext}
+\usepackage[varvw]{newtxmath}
+\usepackage{graphicx}
+\usepackage{url}
+
+\begin{document}
+
+\title{Evaluating Single-Use Ticket Enforcement and Revenue
+Reconciliation in a Tourism Ticketing Platform}
+
+\titlerunning{Ticket Enforcement and Revenue Reconciliation}
+
+% Replace the author names, affiliations, and email addresses.
+\author{
+Muhammad Rizqi Firdaus\inst{1} \and
+Amanda Eka Faraghita\inst{1}
+}
+
+\authorrunning{M. R. Firdaus and A. E. Faraghita}
+
+\institute{
+Electronic Engineering Polytechnic Institute of Surabaya, Surabaya, Indonesia \\
+\email{rizqifrds@it.student.pens.ac.id}\\\email{amandaef098@it.student.pens.ac.id}}
+
+\maketitle
+
+% Write the abstract after the experiments are complete.
+\begin{abstract}
+Tourism ticketing platforms require reliable ticket validation and
+consistent revenue reporting. This study evaluates single-use ticket
+enforcement and revenue-summary consistency in MegiLoka, a prototype
+tourism ticketing platform. The evaluation comprises ticket acceptance
+and rejection tests, concurrent validation requests, and reconciliation
+of synthetic transactions against an independent reference calculation.
+% Replace the following sentence with actual results.
+The experimental results and their implications will be reported after
+the tests are completed. The study is limited to the documented
+prototype and experimental conditions.
+
+\keywords{
+Electronic ticketing \and
+QR code \and
+Ticket validation \and
+Concurrent requests \and
+Revenue reconciliation \and
+Tourism information systems
+}
+\end{abstract}
+
+\section{Introduction}
+
+Tourism ticketing platforms connect several activities in a visitor
+service process. Visitors select a destination and purchase tickets,
+while the platform records a transaction and issues a ticket for
+admission. At the entrance, an operator validates the ticket before
+granting access. Transaction records can also support reports that
+summarize ticket sales and revenue by destination and date. The
+reliability of such reports depends on consistent rules for payment
+status, ticket issuance, cancellations, and the period in which
+revenue is recorded.
+
+Two requirements are particularly relevant to this lifecycle. First,
+a ticket intended for one admission should not be accepted more than
+once, including when two validators submit requests at nearly the
+same time. Second, reported revenue should agree with transactions
+that meet the study's eligibility rules. These requirements are
+evaluated here as prototype scenarios; no claim is made that repeated
+ticket use or revenue discrepancies have occurred at a particular
+tourism agency. A valid message authentication code can help detect
+changes to ticket data, but the platform must also manage ticket and
+payment states consistently to decide whether admission is permitted.
+
+Previous e-ticketing research has investigated ticket authenticity,
+replay protection, and double spending in different settings. For
+example, research on NFC-based public transport ticketing describes
+protection against replay attacks~\cite{ref_nfc_ticketing}, while
+work on reusable electronic tickets discusses online detection of
+double-spending attempts~\cite{ref_reusable_ticket}. Research on
+dynamic QR ticketing also considers copied codes and validation
+histories~\cite{ref_dynamic_qr}. These approaches provide useful
+points of comparison, although their technologies and intended usage
+rules differ from those of a single-use tourism ticket. The present
+study focuses on concurrent validation requests alongside the
+consistency of the platform's revenue summaries.
+
+This paper evaluates MegiLoka, a prototype tourism ticketing platform,
+with respect to ticket validation and revenue-summary consistency.
+The evaluation consists of three experiments: acceptance and rejection
+of tickets under predefined conditions, two concurrent validation
+requests for each of 30 distinct tickets, and reconciliation of
+100 synthetic transactions against an independently calculated
+reference. The study distinguishes payload integrity from single-use
+enforcement and treats HMAC as an existing mechanism used by the
+prototype rather than a new algorithm. Its contribution is an
+evaluation of the ticket lifecycle and internal revenue summaries
+under documented test conditions; it does not establish comprehensive
+security or demonstrate an increase in regional revenue.
+
+\section{Related Work}
+
+\subsection{QR-Based Ticket Authenticity and Replay Prevention}
+
+Electronic tickets can use cryptographic mechanisms to detect
+unauthorized changes to ticket data. However, validating a ticket
+payload and preventing the reuse of an authentic ticket are distinct
+requirements. Previous research has examined replay protection in
+electronic ticketing and QR-based systems~\cite{ref_nfc_ticketing,
+ref_dynamic_qr,ref_qr_security}.
+
+% Compare the selected studies in detail after reading their complete
+% methods and evaluation sections. Identify the payload validation
+% mechanism, replay-prevention mechanism, and experimental conditions.
+
+\subsection{Single-Use Redemption and Concurrent Validation}
+
+A ticketing system must apply its usage rules consistently when
+multiple validation requests are received. Online validation can
+support the detection of repeated use, although the applicable rules
+depend on the ticketing model~\cite{ref_reusable_ticket}.
+
+% Explain how the selected studies handle ticket state, simultaneous
+% requests, and atomic state changes. Do not claim that a study lacks
+% a feature unless the complete source supports that conclusion.
+
+\subsection{Transaction and Revenue Reconciliation}
+
+Revenue reconciliation compares reported values with a reference
+derived from eligible transactions. The comparison requires explicit
+rules for payment status, cancellation, refunds, transaction dates,
+and grouping by destination.
+
+% Add verified primary literature or authoritative sources on
+% transaction and payment reconciliation. Distinguish internal report
+% reconciliation from reconciliation with bank or payment-provider
+% settlement records.
+
+\subsection{Positioning of This Study}
+
+The NFC architecture addresses replay in a public-transport setting,
+while the reusable-ticket study considers online double spending for
+journeys that may include transfers. Dynamic QR research discusses
+copied codes and validation histories. The RSA-PSS evaluation examines
+tampering and replay in a digital-identity context. These studies
+provide different points of comparison for the present prototype.
+
+\begin{table}
+\caption{Related work and relevance to this study.}
+\label{tab:related-comparison}
+\centering
+\begin{tabular}{|p{2.4cm}|p{3.0cm}|p{4.0cm}|}
+\hline
+\textbf{Study} & \textbf{Focus} & \textbf{Boundary} \\
+\hline
+NFC ticketing~\cite{ref_nfc_ticketing} & Replay protection &
+Different technology and transport setting. \\
+\hline
+Reusable ticket~\cite{ref_reusable_ticket} & Online double-spending
+detection & Allows transfers under different usage rules. \\
+\hline
+Dynamic QR~\cite{ref_dynamic_qr} & QR copying and validation history &
+Concurrent redemption and revenue evaluation are not established
+from the reviewed source. \\
+\hline
+QR security~\cite{ref_qr_security} & Tampering and replay &
+Digital identity rather than tourism revenue. \\
+\hline
+Present study & Validation and internal recap & Proposed tests use
+ticket cases, concurrent requests, and synthetic transactions. \\
+\hline
+\end{tabular}
+\end{table}
+
+This study examines ticket payload integrity, single-use enforcement
+under concurrent requests, and the consistency of revenue summaries
+within one prototype. Its reconciliation experiment compares the
+application's internal reports with an independently calculated
+reference for synthetic transactions.
+
+% Add a comparison table after completing the literature review.
+% Suggested columns: study, payload validation, usage state,
+% concurrent redemption, revenue reconciliation, and evaluation method.
+
+\section{System and Research Methodology}
+
+\subsection{Study Context and Requirements Evidence}
+
+MegiLoka is a prototype tourism ticketing platform that includes
+ticket booking, ticket validation, and revenue reporting. The present
+study evaluates the prototype under controlled conditions.
+
+% If observations, interviews, or procedural documents are used,
+% identify the source, date, and relevance of each item. If no field
+% evidence is available, retain the prototype-scenario framing and do
+% not present the requirements as observed institutional problems.
+
+\subsection{Ticket and Payment Lifecycle}
+
+The lifecycle considered in this study comprises transaction
+creation, payment-status recording, ticket issuance, ticket validation,
+and revenue reporting. Payment status and ticket status are represented
+separately. A transaction may have a payment status such as paid,
+pending, or cancelled, while an individual ticket may have a status
+such as valid, used, expired, or cancelled.
+
+% Insert a lifecycle diagram here. Explain the actual transitions in
+% the final version of the system, including cancellation and refund
+% behavior when supported.
+%
+% \begin{figure}
+% \centering
+% \includegraphics[width=\textwidth]{ticket-lifecycle.pdf}
+% \caption{Ticket and payment lifecycle in the evaluated platform.}
+% \label{fig:lifecycle}
+% \end{figure}
+
+\subsection{QR Payload Integrity and Ticket Validation}
+
+The prototype generates a QR payload containing a ticket code,
+destination identifier, validity date, and an HMAC-based value. The
+HMAC-SHA256 calculation covers the ticket code, destination identifier,
+and validity date. The implementation stores the first 16 hexadecimal
+characters of the resulting value in the payload.
+
+Payload verification and ticket usage are separate checks. Payload
+verification examines whether the signed fields match the expected
+HMAC value. The database stores the ticket status used to determine
+whether a ticket has already been redeemed.
+
+% Document the exact validation logic of the tested version.
+% The reviewed implementation also permits manual ticket-code input
+% without a signed QR payload. Explain whether this path is in scope.
+% Describe payment-status and validity-date checks only if they are
+% present in the tested version.
+%
+% If an atomic update or another concurrency control mechanism is
+% implemented, describe it here and identify the tested code version.
+% Do not claim atomic enforcement before verifying the implementation.
+
+\subsection{Revenue Definition and Independent Reference Calculation}
+
+In the reviewed implementation, the validator verifies the payload,
+looks up the ticket, rejects a used, expired, or cancelled status,
+and otherwise marks the ticket used before committing. The status read
+and update are separate operations; an atomic conditional update is
+not apparent in the reviewed path. Concurrent single-use enforcement
+therefore remains a question for testing.
+
+The reviewed validator does not check transaction payment status or
+compare the validity date with the current date. A manual ticket-code
+format is accepted without a signed QR payload. These observations
+come from code review and are not measured experimental results. The
+tested version and any subsequent changes must be identified.
+
+For this study, revenue must be defined using explicit transaction
+eligibility and recording-date rules. The same date and destination
+filters must be applied to the application report and to the
+independent reference calculation.
+
+% Specify:
+% 1. Which payment statuses contribute to revenue.
+% 2. How cancellations and refunds are treated.
+% 3. Which date determines the reporting period.
+% 4. Whether amounts are gross or net of refunds.
+% 5. The currency and rounding rules.
+%
+% The independent reference must be calculated outside the
+% application's recap function, using transaction-level data.
+
+The number of transactions and the number of tickets are reported as
+different measures because a transaction can contain more than one
+ticket. The evaluated version of the platform stores ticket counts in
+its recap; transaction counts therefore require a separate
+transaction-level calculation or an explicitly implemented reporting
+feature.
+
+\subsection{Experimental Setup and Data Collection}
+
+For the proposed baseline, only paid transactions not subsequently
+cancelled contribute their recorded amount to the transaction date
+and destination. Pending and cancelled transactions contribute zero.
+The time zone, rounding, and cancellation rule must be frozen before
+execution. Refunds are outside this baseline unless supported and
+documented. For date $d$ and destination $g$, let $E_{d,g}$ be the
+independently identified eligible transactions and $a_i$ their amounts.
+The reference count and amount are
+\begin{equation}
+N^{\mathrm{ref}}_{d,g}=|E_{d,g}|,\qquad
+R^{\mathrm{ref}}_{d,g}=\sum_{i\in E_{d,g}} a_i.
+\end{equation}
+The amount difference is
+$\Delta_{d,g}=R^{\mathrm{sys}}_{d,g}-R^{\mathrm{ref}}_{d,g}$.
+The reference is maintained separately from the application's recap.
+
+The reviewed booking and point-of-sale paths create transactions as
+paid and update a stored recap on the creation date. The report reads
+that recap. Cancellation adjustments and refunds are not established
+in those paths and require testing or a stated limitation.
+
+The experiments are conducted using a documented version of the
+prototype and a controlled test database. The test environment,
+database engine, server configuration, data preparation procedure,
+and logging mechanism must be recorded to support reproducibility.
+
+% Record the application version or commit, operating system,
+% database engine and version, server configuration, test dates,
+% and time zone.
+%
+% Use a clean test database or document the baseline. Existing
+% synthetic recap data must not be mixed with experimental results.
+% State explicitly that payments are simulated.
+
+\begin{table}
+\caption{Experimental datasets and conditions.}
+\label{tab:experimental-conditions}
+\centering
+\begin{tabular}{|p{4.0cm}|p{5.0cm}|}
+\hline
+\textbf{Experiment} & \textbf{Dataset and conditions} \\
+\hline
+Ticket acceptance and rejection &
+At least 10 tickets per predefined category. \\
+\hline
+Concurrent validation &
+30 distinct valid tickets and two validator sessions. \\
+\hline
+Revenue reconciliation &
+100 synthetic transactions across defined statuses, dates,
+destinations, and amounts. \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{Evaluation Scenarios and Metrics}
+
+\subsubsection{Experiment 1: Ticket Acceptance and Rejection.}
+
+At least 10 tickets are prepared for each of the following categories:
+valid, modified payload, already used, cancelled, and unpaid.
+Expired tickets are added when the relevant rule is supported and
+defined. The expected response and initial state are documented
+before each test. For a modified payload, one signed field is changed
+without generating a new HMAC value.
+
+Each ticket is submitted for validation, and both the response and
+the resulting usage state are recorded. Rejected tickets must not
+increase the recorded number of admissions.
+
+% Distinguish an explicit expired status from a validity date that
+% has passed. Add separate categories when both are tested.
+
+\subsubsection{Experiment 2: Concurrent Ticket Validation.}
+
+Thirty distinct valid tickets are tested. For each ticket, two
+validator sessions submit validation requests concurrently. Both
+responses are recorded, followed by an inspection of the persistent
+ticket state and available usage records.
+
+The expected outcome for each round is one successful response, one
+rejection, and one recorded use. The number of rounds with two
+successful responses is divided by 30 to report the observed
+double-acceptance rate.
+
+% Record how concurrent requests are synchronized and measure latency
+% for both sessions. A single used status alone cannot establish that
+% only one request received a successful response. Preserve both
+% responses and any available per-request audit records.
+
+\subsubsection{Experiment 3: Transaction and Revenue Reconciliation.}
+
+A dataset of 100 synthetic transactions is prepared with different
+amounts and predefined payment statuses. The dataset includes paid,
+pending, and cancelled transactions, as well as refunds if the
+evaluated system supports them.
+
+An independent reference is calculated by date and destination using
+the study's revenue rules. Application results are obtained using the
+same filters and compared with the reference for each group. Any
+difference is investigated using transaction identifiers.
+
+% Record the exact data-entry procedure. Explain whether transactions
+% are created through the application or inserted for test setup and
+% how the associated recap is generated.
+
+\section{Results}
+
+% Replace every placeholder in this section with observed results.
+% If a planned experiment is changed or omitted, revise the methods,
+% abstract, title, and claims accordingly.
+
+\subsection{Ticket Acceptance and Rejection}
+
+Table~\ref{tab:ticket-results} summarizes the observed responses for
+each predefined ticket category.
+
+\begin{table}
+\caption{Ticket acceptance and rejection results.}
+\label{tab:ticket-results}
+\centering
+\begin{tabular}{|p{2.5cm}|c|c|c|c|c|}
+\hline
+\textbf{Category} & \textbf{N} & \textbf{CA} & \textbf{CR}
+& \textbf{IA} & \textbf{IR} \\
+\hline
+Valid & 10 & -- & -- & -- & -- \\
+\hline
+Modified payload & 10 & -- & -- & -- & -- \\
+\hline
+Already used & 10 & -- & -- & -- & -- \\
+\hline
+Cancelled & 10 & -- & -- & -- & -- \\
+\hline
+Unpaid & 10 & -- & -- & -- & -- \\
+\hline
+% Add expired categories if applicable.
+\end{tabular}
+
+\smallskip
+\parbox{0.9\textwidth}{\footnotesize
+N: number tested; CA: correctly accepted; CR: correctly rejected;
+IA: incorrectly accepted; IR: incorrectly rejected.}
+\end{table}
+
+% Explain the observed results and identify any rejected ticket that
+% changed the recorded usage state.
+
+\subsection{Concurrent Ticket Validation}
+
+Table~\ref{tab:concurrency-results} records the responses and
+persistent usage observations for each concurrent-validation round.
+
+\begin{table}
+\caption{Concurrent validation results.}
+\label{tab:concurrency-results}
+\centering
+\begin{tabular}{|c|c|c|c|c|c|}
+\hline
+\textbf{Round} & \textbf{Ticket ID} & \textbf{A} & \textbf{B}
+& \textbf{Uses} & \textbf{Latency A/B} \\
+\hline
+1 & -- & -- & -- & -- & -- \\
+\hline
+% Add the remaining rounds or provide the complete table as
+% supplementary material, subject to venue requirements.
+\end{tabular}
+\end{table}
+
+% Report:
+% - Rounds with two successful responses: [number] / 30.
+% - Rounds with exactly one acceptance, one rejection, and one
+%   recorded use: [number] / 30.
+% - Latency summary and any incomplete or failed requests.
+
+\subsection{Transaction and Revenue Reconciliation}
+
+Table~\ref{tab:reconciliation-results} compares the system results
+with the independent reference by date and destination.
+
+\begin{table}
+\caption{Transaction and revenue reconciliation by group.}
+\label{tab:reconciliation-results}
+\centering
+\begin{tabular}{|p{1.5cm}|p{1.8cm}|c|c|c|c|c|}
+\hline
+\textbf{Date} & \textbf{Destination} & \textbf{RT} & \textbf{ST}
+& \textbf{RA} & \textbf{SA} & \textbf{Diff.} \\
+\hline
+-- & -- & -- & -- & -- & -- & -- \\
+\hline
+% Add one row for each date and destination group.
+\end{tabular}
+
+\smallskip
+\parbox{0.9\textwidth}{\footnotesize
+RT: reference transaction count; ST: system transaction count;
+RA: reference amount; SA: system amount; Diff.: system amount
+minus reference amount.}
+\end{table}
+
+% Explain how system transaction counts were obtained. The existing
+% recap's ticket count is not automatically a transaction count.
+% Trace discrepancies to transaction IDs and report group-level
+% results even when the grand total difference is zero.
+
+\subsection{Failure Cases and Observed Causes}
+
+Table~\ref{tab:failure-cases} presents representative cases in which
+the observed behavior differs from the predefined expectation.
+
+\begin{table}
+\caption{Representative failure cases and observed causes.}
+\label{tab:failure-cases}
+\centering
+\begin{tabular}{|p{1.5cm}|p{2.4cm}|p{2.4cm}|p{3.0cm}|}
+\hline
+\textbf{Case ID} & \textbf{Expected} & \textbf{Observed}
+& \textbf{Cause supported by evidence} \\
+\hline
+-- & -- & -- & -- \\
+\hline
+% Add observed cases only. If no failures occur, state that none were
+% observed under the tested conditions.
+\end{tabular}
+\end{table}
+
+\section{Discussion}
+
+\subsection{Ticket Authenticity and Replay Prevention}
+
+A rejected modified payload addresses the tested integrity condition;
+rejection of a second request addresses the observed usage sequence.
+Two successful concurrent responses would indicate double acceptance
+in that round even if one final ticket row is marked used. These tests
+do not cover every attack path.
+
+% Discuss payload integrity, sequential reuse, and concurrent
+% validation separately. Explain how the observed responses relate to
+% the implemented validation logic and database state changes.
+% Do not infer that HMAC alone prevents reuse.
+
+\subsection{Reliability of Revenue Summaries}
+
+A zero grand-total difference can conceal discrepancies that cancel
+across groups. Date-destination comparisons and transaction identifiers
+are needed to identify such errors. Agreement against synthetic data
+supports internal consistency only under the defined rules.
+
+% Explain agreement or disagreement between the application and the
+% independent reference. Discuss discrepancies per date and
+% destination, including errors that cancel out in the grand total.
+
+\subsection{Implications for Tourism Ticketing Services}
+
+Traceable validation and reporting can support an operator's review
+of admissions and transaction summaries. Claims about operational
+benefits depend on measured outcomes and field evidence.
+
+% Explain how the observed behavior affects ticket inspection,
+% admission records, and the interpretation of revenue summaries.
+% Relate the discussion to the prototype and evidence available.
+
+\subsection{Limitations and Threats to Validity}
+
+The experiments use synthetic transactions and simulated payment
+states. Their results are limited to the tested application version,
+dataset, environment, and operating rules. They do not establish
+comprehensive system security, confirm settlement with a payment
+provider, or demonstrate an increase in regional revenue.
+
+% Add limitations concerning sample size, concurrent request
+% synchronization, database engine, available audit logs, and
+% field evidence as appropriate.
+
+\section{Conclusion}
+
+% Write this section after the experiments are complete.
+%
+% Answer the research question using actual values:
+% 1. Ticket acceptance and rejection results by category.
+% 2. Concurrent rounds with double acceptance out of 30.
+% 3. Revenue and transaction differences by date and destination.
+%
+% State the implications and the limits of the evidence. Do not claim
+% successful enforcement or accurate reconciliation if the results do
+% not support those conclusions.
+
+\begin{credits}
+
+% Remove this item if no acknowledgment is required.
+% \subsubsection{\ackname}
+% The authors thank [name or institution] for [contribution].
+
+\subsubsection{\discintname}
+% Confirm this disclosure with all authors before submission.
+The authors have no competing interests to declare that are relevant
+to the content of this article.
+
+% Replace this statement if there are relevant competing interests.
+
+\end{credits}
+
+\begin{thebibliography}{8}
+
+\bibitem{ref_nfc_ticketing}
+A Simple and Secure E-Ticketing System for Intelligent Public
+Transportation Based on NFC.
+\url{https://eudl.eu/doi/10.4108/icst.urb-iot.2014.257244}
+
+\bibitem{ref_reusable_ticket}
+A Reusable Public Transport Electronic Ticket System with Fast
+Validation.
+\url{https://doi.org/10.1007/s12469-024-00381-8}
+
+\bibitem{ref_dynamic_qr}
+Dynamic QR Codes for Ticketing Systems.
+\url{https://fenix.tecnico.ulisboa.pt/downloadFile/844820067128428/87678-jose-oliveira-dissertacao.pdf}
+
+\bibitem{ref_qr_security}
+Slameto, A.A., Sutanto, Y., Kurniawan, H.:
+Multi-Scenario Security Evaluation of an RSA-PSS Anti-Replay QR Code
+System with a PRISMA 2020 Review of Indonesian Prior Work.
+\url{https://doi.org/10.30871/jaic.v10i5.14095}
+
+% Complete author names, publication details, page numbers, and
+% access dates after verifying each source against the venue's
+% bibliography requirements.
+
+\end{thebibliography}
+
+\end{document}

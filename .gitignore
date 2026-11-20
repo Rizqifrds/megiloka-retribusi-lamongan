@@ -1,0 +1,12 @@
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+megiloka.db
+instance/
+static/qrcodes/*.png
+.pytest_cache/
+.DS_Store

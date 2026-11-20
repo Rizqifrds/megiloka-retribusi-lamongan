@@ -1,0 +1,275 @@
+{% extends "base.html" %}
+
+{% block title %}MegiLoka - Portal Pariwisata Modern & E-Ticketing Wisata Lamongan{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('serve_css', filename='lamongan-home.css') }}">
+{% endblock %}
+
+{% block content %}
+<!-- Lamongan modern: welcoming copy, local photography, and clear visitor actions. -->
+<section class="lamongan-hero mb-5" aria-labelledby="lamongan-hero-title">
+    <div class="container">
+        <div class="lamongan-hero-grid">
+            <div class="lamongan-hero-copy">
+                <span class="lamongan-eyebrow"><span aria-hidden="true"></span> LAMONGAN MEGILAN</span>
+                <h1 id="lamongan-hero-title">Dekat di hati.<br>Seru untuk <span>dijelajahi.</span></h1>
+                <p class="lamongan-hero-description">Selalu ada cerita istimewa di Lamongan. Nikmati pesona pesisir, kekayaan budaya, dan hangatnya kebersamaan dalam satu perjalanan.</p>
+                <div class="lamongan-hero-actions">
+                    <a href="{{ url_for('destinations') }}" class="lamongan-action-primary">Jelajahi Wisata <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+                    <a href="{{ url_for('public_calendar') }}" class="lamongan-action-secondary"><i class="fa-regular fa-calendar" aria-hidden="true"></i> Lihat Agenda</a>
+                </div>
+                <div class="lamongan-hero-note"><i class="fa-solid fa-ticket" aria-hidden="true"></i><span>Temukan destinasi favorit. Pesan tiket lebih mudah.</span></div>
+            </div>
+            <figure class="lamongan-hero-visual">
+                <img src="{{ url_for('static', filename='images/lamongan-wbl-hero.jpg') }}" alt="Pengunjung menikmati wahana flying fox dengan pemandangan laut di Wisata Bahari Lamongan" width="1080" height="812" fetchpriority="high">
+                <div class="lamongan-dolen-stamp" aria-hidden="true"><i class="fa-solid fa-sun"></i><span>Ayo<br>dolen!</span></div>
+                <figcaption class="lamongan-photo-caption">
+                    <span class="lamongan-photo-location"><i class="fa-solid fa-location-dot" aria-hidden="true"></i> PACIRAN, LAMONGAN</span>
+                    <strong>Sepotong bahagia<br>di pesisir utara.</strong>
+                    <span>Wisata Bahari Lamongan</span>
+                </figcaption>
+                <a class="lamongan-photo-credit" href="https://lamongantourism.com/destination/wisata-bahari-lamongan-wbl/" target="_blank" rel="noopener noreferrer">Foto: Lamongan Tourism <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i></a>
+            </figure>
+        </div>
+        <div class="lamongan-discovery-strip" aria-label="Inspirasi perjalanan">
+            <div class="lamongan-discovery-intro"><span>SATU DAERAH, BANYAK CERITA</span><strong>Liburan dengan caramu.</strong></div>
+            <div class="lamongan-discovery-item"><i class="fa-solid fa-water" aria-hidden="true"></i><span>Pesona bahari<small>Rasakan suasana pesisir</small></span></div>
+            <div class="lamongan-discovery-item"><i class="fa-solid fa-landmark" aria-hidden="true"></i><span>Budaya & religi<small>Kenali cerita dan tradisi</small></span></div>
+            <div class="lamongan-discovery-item"><i class="fa-solid fa-leaf" aria-hidden="true"></i><span>Alam & rekreasi<small>Nikmati waktu bersama</small></span></div>
+        </div>
+    </div>
+</section>
+
+<div class="container mb-5">
+    <section id="agenda-libur" class="spotlight-box mb-5 p-4" aria-labelledby="agenda-libur-title">
+        <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-3">
+            <h2 id="agenda-libur-title" class="h4 fw-bold mb-0">Promo &amp; Event Libur Nasional</h2>
+            <button type="button" class="btn btn-outline-primary btn-sm rounded-pill" onclick="askMegi('Ada promo atau event saat libur nasional?')">
+                Tanya Megi
+            </button>
+        </div>
+        <div id="holiday-feed-content" data-url="{{ url_for('holiday_updates_partial') }}" aria-live="polite">
+            {% include "holiday_feed.html" %}
+        </div>
+    </section>
+
+    <div id="spotlightSection" class="spotlight-box mb-5 p-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+            <div>
+                <span class="badge badge-lamongan-accent px-3 py-2 rounded-pill fw-bold mb-2">
+                    <i class="fa-solid fa-calendar-check me-1"></i>AGENDA & EVENT PILIHAN LAMONGAN
+                </span>
+                <h3 class="fw-bold text-dark mb-1">Sorotan Agenda Terdekat</h3>
+                <p class="text-muted small mb-0">Petunjuk jadwal acara dan pembukaan objek wisata yang berlangsung <strong>besok (H-1)</strong> atau dalam <strong>1 bulan ke depan (H-30)</strong>.</p>
+            </div>
+            <a href="{{ url_for('public_calendar') }}" class="btn btn-outline-primary btn-sm rounded-pill fw-bold px-3 d-flex align-items-center gap-2">
+                <i class="fa-solid fa-calendar-days text-primary"></i>Lihat Semua Kalender
+            </a>
+        </div>
+
+        {% if spotlight_items %}
+        <div class="row g-4" id="spotlightCardsContainer">
+            {% for item in spotlight_items %}
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden position-relative bg-white spotlight-card {% if item.is_urgent %}border-urgent{% else %}border-upcoming{% endif %}">
+                    <div style="height: 165px; position: relative; overflow: hidden;">
+                        <img src="{{ item.image_url }}" alt="{{ item.title }}" class="w-100 h-100 object-fit-cover">
+                        <div class="position-absolute top-0 start-0 m-2">
+                            <span class="badge {{ item.badge_class }} rounded-pill px-3 py-2 shadow-sm font-monospace">
+                                {% if item.is_urgent %}<i class="fa-solid fa-bell me-1"></i>{% else %}<i class="fa-solid fa-calendar me-1"></i>{% endif %}
+                                {{ item.badge_label }}
+                            </span>
+                        </div>
+                        <div class="position-absolute bottom-0 end-0 m-2">
+                            <span class="badge bg-dark bg-opacity-75 text-white rounded-pill px-2 py-1 small">{{ item.type_label }}</span>
+                        </div>
+                    </div>
+                    <div class="card-body p-3 d-flex flex-column">
+                        <div class="d-flex align-items-center justify-content-between text-muted small mb-2">
+                            <span><i class="fa-regular fa-clock me-1 text-primary"></i>{{ item.timing_desc }}</span>
+                            <span class="fw-semibold text-dark">{{ item.date_str }}</span>
+                        </div>
+                        <h5 class="card-title fw-bold text-dark mb-1">{{ item.title }}</h5>
+                        <p class="text-muted small mb-2">
+                            <i class="fa-solid fa-location-dot text-danger me-1"></i>{{ item.location }}
+                        </p>
+                        <p class="card-text text-secondary small mb-3 flex-grow-1">{{ item.description | truncate(90) }}</p>
+                        <div class="d-flex gap-2 mt-auto">
+                            <a href="{{ item.url }}" class="btn btn-sm btn-primary rounded-pill w-100 fw-semibold">
+                                {% if item.type == 'destination' %}
+                                    <i class="fa-solid fa-ticket me-1"></i>Detail & Pesan Tiket
+                                {% else %}
+                                    <i class="fa-solid fa-calendar-check me-1"></i>Lihat Jadwal Lengkap
+                                {% endif %}
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="card border-0 shadow-sm rounded-4 p-4 text-center bg-white" id="spotlightEmptyCard">
+            <div class="py-3">
+                <div class="stat-icon mx-auto mb-3 rounded-circle d-flex align-items-center justify-content-center" style="width:64px;height:64px;">
+                    <i class="fa-solid fa-calendar-plus fs-2"></i>
+                </div>
+                <h5 class="fw-bold text-dark">Belum Ada Agenda Terdekat (H-1 atau H-30)</h5>
+                <p class="text-muted col-md-8 mx-auto small mb-3">
+                    Gunakan fitur <strong>Tanya Megi</strong> untuk mencari jadwal acara atau destinasi wisata di Kabupaten Lamongan.
+                </p>
+                <div class="d-flex justify-content-center gap-2 flex-wrap">
+                    <button type="button" class="btn btn-outline-warning text-dark btn-sm rounded-pill fw-bold px-3" onclick="askMegi('Event apa saja besok?')">
+                        <i class="fa-solid fa-bolt text-warning me-1"></i>Event Besok (H-1)
+                    </button>
+                    <button type="button" class="btn btn-primary btn-sm rounded-pill fw-bold px-3" onclick="askMegi('Event apa saja bulan depan?')">
+                        <i class="fa-solid fa-calendar me-1"></i>Event 1 Bulan (H-30)
+                    </button>
+                    <button type="button" class="btn btn-outline-primary btn-sm rounded-pill fw-bold px-3" onclick="askMegi('Destinasi wisata apa saja di Lamongan?')">
+                        <i class="fa-solid fa-umbrella-beach me-1"></i>Destinasi Baru
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- WISATA TERPOPULER (SERING DIKUNJUNGI) & PROMO BERLANGSUNG -->
+    <!-- Revisi Dosen: Hanya wisata sering dikunjungi & ada promo  -->
+    <!-- ========================================================= -->
+    <div class="d-flex flex-wrap justify-content-between align-items-end mb-4 gap-2">
+        <div>
+            <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                <span class="badge badge-lamongan-accent rounded-pill px-3 py-1">
+                    <i class="fa-solid fa-fire me-1"></i>PILIHAN POPULER
+                </span>
+                <span class="badge badge-lamongan-upcoming rounded-pill px-3 py-1">
+                    <i class="fa-solid fa-tags me-1"></i>PROMO SEDANG BERLANGSUNG
+                </span>
+            </div>
+            <h2 class="fw-bold text-dark mb-1">Wisata Favorit & Promo Berlangsung</h2>
+            <p class="text-muted mb-0">Destinasi wisata daerah yang paling sering dikunjungi dengan promo tiket resmi diskon spesial.</p>
+        </div>
+        <a href="{{ url_for('destinations') }}" class="btn btn-outline-primary rounded-pill fw-semibold">
+            Lihat Semua Destinasi ({{ total_dest }}) <i class="fa-solid fa-arrow-right ms-1"></i>
+        </a>
+    </div>
+
+    <div class="row g-4 mb-5">
+        {% for dest in destinations %}
+        <div class="col-md-6 col-lg-4">
+            <div class="card card-megiloka h-100">
+                <div class="dest-img-container">
+                    <img src="{{ dest.image_url }}" alt="{{ dest.name }}" class="dest-img">
+                    
+                    <!-- Promo Tag Ribbon -->
+                    {% if dest.active_promo %}
+                    <span class="promo-badge-ribbon">
+                        <i class="fa-solid fa-bolt me-1"></i>PROMO AKTIF {% if dest.active_promo.discount_percent %}{{ dest.active_promo.discount_percent|int }}% OFF{% endif %}
+                    </span>
+                    {% endif %}
+
+                    <!-- Sering Dikunjungi Badge -->
+                    <span class="popular-badge-top">
+                        <i class="fa-solid fa-chart-line text-warning me-1"></i>Sering Dikunjungi
+                    </span>
+
+                    <!-- Price Badge with Discount Display -->
+                    <div class="price-badge-modern">
+                        {% if dest.active_promo and dest.discounted_price < dest.base_price %}
+                            <del class="text-white-50 small me-1" style="font-size: 0.8rem;">Rp {{ "{:,.0f}".format(dest.base_price) }}</del>
+                            <span class="text-warning fw-bold fs-6">Rp {{ "{:,.0f}".format(dest.discounted_price) }}</span>
+                        {% else %}
+                            <span class="fw-bold">Rp {{ "{:,.0f}".format(dest.base_price) }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="card-body p-4 d-flex flex-column">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="badge badge-lamongan-upcoming rounded-pill">
+                            <i class="fa-solid fa-tag me-1"></i>{{ dest.category }}
+                        </span>
+                        <small class="text-muted"><i class="fa-solid fa-shield-halved text-primary me-1"></i>Tiket QR Resmi</small>
+                    </div>
+
+                    <h5 class="card-title fw-bold text-dark mb-1">{{ dest.name }}</h5>
+                    <p class="text-muted small mb-3">
+                        <i class="fa-solid fa-location-dot text-primary me-1"></i>{{ dest.location }}
+                    </p>
+
+                    <!-- Callout Promo Sedang Berlangsung di Wisata Ini -->
+                    {% if dest.active_promo %}
+                    <div class="promo-inner-callout mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="promo-title">
+                                <i class="fa-solid fa-gift me-1"></i>{{ dest.active_promo.name }}
+                            </span>
+                            {% if dest.active_promo.discount_percent %}
+                            <span class="badge badge-lamongan-accent rounded-pill" style="font-size: 0.72rem;">
+                                Hemat {{ dest.active_promo.discount_percent|int }}%
+                            </span>
+                            {% endif %}
+                        </div>
+                        <div class="promo-desc">{{ dest.active_promo.description }}</div>
+                        <div class="text-muted mt-1" style="font-size: 0.72rem;">
+                            <i class="fa-regular fa-clock me-1 text-warning"></i>Promo berlaku s.d. <strong>{{ dest.active_promo.valid_until.strftime('%d %B %Y') }}</strong>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <p class="card-text text-secondary small mb-4 flex-grow-1">
+                        {{ dest.description | truncate(95) }}
+                    </p>
+
+                    <div class="d-flex gap-2 mt-auto">
+                        <a href="{{ url_for('destination_detail', id=dest.id) }}" class="btn btn-outline-primary btn-sm flex-fill rounded-pill fw-semibold">
+                            Detail Wahana
+                        </a>
+                        <a href="{{ url_for('booking', destination_id=dest.id) }}" class="btn btn-primary btn-sm flex-fill rounded-pill fw-bold">
+                            <i class="fa-solid fa-ticket me-1"></i>Pesan Tiket Promo
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Kalender Event Mendatang -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold text-dark mb-0">Kalender Event Kebudayaan Lamongan</h3>
+            <p class="text-muted small mb-0">Agenda festival seni dan pariwisata daerah yang akan datang.</p>
+        </div>
+        <a href="{{ url_for('public_calendar') }}" class="btn btn-outline-primary rounded-pill btn-sm fw-bold">
+            Lihat Semua Event <i class="fa-solid fa-arrow-right ms-1"></i>
+        </a>
+    </div>
+    <div class="row g-4 mb-5">
+        {% for event in events %}
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-4 h-100 bg-white">
+                <div class="card-body p-4 d-flex align-items-center">
+                    <div class="event-date-box me-3">
+                        <span class="d-block date-num">{{ event.event_date.strftime('%d') }}</span>
+                        <span class="d-block date-month">{{ event.event_date.strftime('%b') }}</span>
+                    </div>
+                    <div class="overflow-hidden">
+                        <h6 class="fw-bold text-dark mb-1 text-truncate">{{ event.name }}</h6>
+                        <small class="text-muted d-block text-truncate">
+                            <i class="fa-solid fa-location-dot me-1 text-primary"></i>{% if event.destination %}{{ event.destination.name }}{% else %}Kabupaten Lamongan{% endif %}
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="col-12 text-center text-muted">Belum ada event wisata dalam waktu dekat.</div>
+        {% endfor %}
+    </div>
+</div>
+
+{% endblock %}

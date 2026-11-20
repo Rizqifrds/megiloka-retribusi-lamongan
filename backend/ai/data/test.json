@@ -1,0 +1,258 @@
+[
+  {
+    "text": "Bisa tampilkan agenda untuk esok hari?",
+    "intent": "event_schedule"
+  },
+  {
+    "text": "Apa kegiatan pariwisata pada akhir pekan ini?",
+    "intent": "event_schedule"
+  },
+  {
+    "text": "Minta daftar event bulan Desember 2026",
+    "intent": "event_schedule"
+  },
+  {
+    "text": "Adakah festival yang dijadwalkan bulan depan?",
+    "intent": "event_schedule"
+  },
+  {
+    "text": "Saya mencari acara untuk minggu ini",
+    "intent": "event_schedule"
+  },
+  {
+    "text": "Agenda wisata terdekat apa ya?",
+    "intent": "event_schedule"
+  },
+  {
+    "text": "Event untuk tanggal 7 November 2026 apa?",
+    "intent": "event_schedule"
+  },
+  {
+    "text": "Tunjukkan kegiatan yang akan berlangsung di Lamongan",
+    "intent": "event_schedule"
+  },
+  {
+    "text": "Festival Kupatan diselenggarakan kapan ya?",
+    "intent": "event_detail"
+  },
+  {
+    "text": "Di mana tempat berlangsungnya Festival Pantura?",
+    "intent": "event_detail"
+  },
+  {
+    "text": "Pukul berapa acara Haul Sunan Drajat akan dimulai?",
+    "intent": "event_detail"
+  },
+  {
+    "text": "Apa uraian kegiatan Lamongan Tempo Doeloe?",
+    "intent": "event_detail"
+  },
+  {
+    "text": "Kapan tanggal penyelenggaraan kirab budaya?",
+    "intent": "event_detail"
+  },
+  {
+    "text": "Bisa jelaskan Festival Bonsai Nasional?",
+    "intent": "event_detail"
+  },
+  {
+    "text": "Masih berapa hari menuju event Tari Boran?",
+    "intent": "event_detail"
+  },
+  {
+    "text": "Apakah event Festival Bandeng sudah selesai?",
+    "intent": "event_detail"
+  },
+  {
+    "text": "Letak wisata Pantai Kutang sebelah mana?",
+    "intent": "destination_info"
+  },
+  {
+    "text": "Minta informasi tentang Wisata Bahari Lamongan",
+    "intent": "destination_info"
+  },
+  {
+    "text": "Tempat rekreasi apa yang ada di Lamongan?",
+    "intent": "destination_info"
+  },
+  {
+    "text": "Saya mencari alamat lengkap Goa Maharani",
+    "intent": "destination_info"
+  },
+  {
+    "text": "Bisa ceritakan daya tarik destinasi WEGO?",
+    "intent": "destination_info"
+  },
+  {
+    "text": "Destinasi religi yang tercatat apa saja?",
+    "intent": "destination_info"
+  },
+  {
+    "text": "Waduk Gondang itu lokasinya di mana ya?",
+    "intent": "destination_info"
+  },
+  {
+    "text": "Tampilkan pilihan wisata bahari",
+    "intent": "destination_info"
+  },
+  {
+    "text": "Kalau masuk Pantai Kutang biayanya berapa?",
+    "intent": "ticket_price"
+  },
+  {
+    "text": "Berapakah tarif karcis WBL untuk dewasa?",
+    "intent": "ticket_price"
+  },
+  {
+    "text": "Saya mencari info diskon tiket wisata",
+    "intent": "ticket_price"
+  },
+  {
+    "text": "Minta rincian harga tiket Maharani Zoo",
+    "intent": "ticket_price"
+  },
+  {
+    "text": "Berapa rupiah yang dibayar untuk masuk WEGO?",
+    "intent": "ticket_price"
+  },
+  {
+    "text": "Adakah promo tiket Waduk Gondang sekarang?",
+    "intent": "ticket_price"
+  },
+  {
+    "text": "Tiket anak Sunan Drajat harganya berapa ya?",
+    "intent": "ticket_price"
+  },
+  {
+    "text": "Boleh lihat daftar tarif masuk destinasi?",
+    "intent": "ticket_price"
+  },
+  {
+    "text": "Tolong ajari saya memesan e-ticket",
+    "intent": "booking"
+  },
+  {
+    "text": "Bagaimana alur beli tiket di website ini?",
+    "intent": "booking"
+  },
+  {
+    "text": "Saya mau reservasi kunjungan wisata",
+    "intent": "booking"
+  },
+  {
+    "text": "Apa langkah untuk mendapatkan tiket QR?",
+    "intent": "booking"
+  },
+  {
+    "text": "Bisa jelaskan opsi pembayaran pemesanan?",
+    "intent": "booking"
+  },
+  {
+    "text": "Di mana saya mengisi pesanan tiket?",
+    "intent": "booking"
+  },
+  {
+    "text": "Panduan membeli tiket secara daring dong",
+    "intent": "booking"
+  },
+  {
+    "text": "Gimana proses booking wisata di MegiLoka?",
+    "intent": "booking"
+  },
+  {
+    "text": "Hai Megi, salam kenal ya",
+    "intent": "greeting"
+  },
+  {
+    "text": "Selamat pagi asisten MegiLoka",
+    "intent": "greeting"
+  },
+  {
+    "text": "Terima kasih banyak sudah membantu",
+    "intent": "greeting"
+  },
+  {
+    "text": "Assalamualaikum, boleh saya tanya?",
+    "intent": "greeting"
+  },
+  {
+    "text": "Jelaskan kemampuanmu sebagai asisten",
+    "intent": "greeting"
+  },
+  {
+    "text": "Halo bot, permisi",
+    "intent": "greeting"
+  },
+  {
+    "text": "Matur nuwun atas infonya",
+    "intent": "greeting"
+  },
+  {
+    "text": "Siapa kamu dan bisa membantu apa?",
+    "intent": "greeting"
+  },
+  {
+    "text": "Jam berapa destinasi WBL mulai buka?",
+    "intent": "opening_hours"
+  },
+  {
+    "text": "Sampai pukul berapa Pantai Kutang beroperasi?",
+    "intent": "opening_hours"
+  },
+  {
+    "text": "Adakah informasi hari buka Goa Maharani?",
+    "intent": "opening_hours"
+  },
+  {
+    "text": "Sunan Drajat bisa dikunjungi jam berapa?",
+    "intent": "opening_hours"
+  },
+  {
+    "text": "Tolong info waktu operasional WEGO",
+    "intent": "opening_hours"
+  },
+  {
+    "text": "Apakah Pantai Lorena tutup sore hari?",
+    "intent": "opening_hours"
+  },
+  {
+    "text": "Bagaimana jadwal buka tutup Waduk Gondang?",
+    "intent": "opening_hours"
+  },
+  {
+    "text": "Loket Sukodadi Carnival buka pagi atau malam?",
+    "intent": "opening_hours"
+  },
+  {
+    "text": "Bisakah kamu mengerjakan tugas fisika?",
+    "intent": "out_of_scope"
+  },
+  {
+    "text": "Apa resep membuat kue cokelat?",
+    "intent": "out_of_scope"
+  },
+  {
+    "text": "Berapa skor basket tadi malam?",
+    "intent": "out_of_scope"
+  },
+  {
+    "text": "Tolong tuliskan kode Java untuk sorting",
+    "intent": "out_of_scope"
+  },
+  {
+    "text": "Bagaimana cara mengobati batuk?",
+    "intent": "out_of_scope"
+  },
+  {
+    "text": "Prediksi investasi emas minggu depan",
+    "intent": "out_of_scope"
+  },
+  {
+    "text": "Ceritakan tentang galaksi Andromeda",
+    "intent": "out_of_scope"
+  },
+  {
+    "text": "Bantu menulis CV untuk melamar kerja",
+    "intent": "out_of_scope"
+  }
+]
