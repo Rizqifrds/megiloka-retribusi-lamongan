@@ -9,6 +9,25 @@
         <p class="lead text-muted max-w-2xl mx-auto">Jangan lewatkan berbagai acara menarik dan festival budaya yang akan diselenggarakan di Kabupaten Lamongan.</p>
     </div>
 
+    {% if instagram_events %}
+    <section class="mb-4" aria-labelledby="wbl-events-title">
+        <h2 id="wbl-events-title" class="h4 fw-bold">Event dari Instagram WBL</h2>
+        <div class="row g-3">
+            {% for item in instagram_events %}
+            <div class="col-md-6">
+                <article class="card card-megiloka h-100 p-3">
+                    <h3 class="h5">{{ item.name }}</h3>
+                    <p class="text-muted mb-2">
+                        <time datetime="{{ item.start }}">{{ item.start.split('-') | reverse | join('/') }}</time>
+                        {% if item.end != item.start %}– <time datetime="{{ item.end }}">{{ item.end.split('-') | reverse | join('/') }}</time>{% endif %}
+                    </p>
+                    <a href="{{ item.url }}">Lihat posting asli di Instagram</a>
+                </article>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
     <div class="row g-4 justify-content-center">
         {% for event in events %}
         <div class="col-lg-8">

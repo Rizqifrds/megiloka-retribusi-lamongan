@@ -39,7 +39,14 @@ app = Flask(
 app.config.from_object(Config)
 
 db.init_app(app)
-holiday_feed = HolidayFeed(os.path.join(app.instance_path, 'holiday-feed.json'), app.config['HOLIDAY_PARTNER_URL'])
+instagram_settings = tuple(app.config[key] for key in (
+    'INSTAGRAM_GRAPH_VERSION', 'INSTAGRAM_IG_USER_ID', 'INSTAGRAM_ACCESS_TOKEN',
+))
+holiday_feed = HolidayFeed(
+    os.path.join(app.instance_path, 'holiday-feed.json'),
+    app.config['HOLIDAY_PARTNER_URL'],
+    instagram_settings if all(instagram_settings) else None,
+)
 
 
 @app.before_request
@@ -146,13 +153,13 @@ def seed_database():
 
             # Add Users
             admin_user = User(username='admin', full_name='Administrator Disparbud Lamongan', role='admin')
-            admin_user.set_password('password123')
+            admin_user.set_password('adminmegiloka')
 
             cashier1 = User(username='kasir_drajat', full_name='Budi Loket Sunan Drajat', role='cashier', destination_id=dest1.id)
-            cashier1.set_password('password123')
+            cashier1.set_password('kasirmegiloka')
 
             gate1 = User(username='gate_drajat', full_name='Siti Petugas Gate Drajat', role='gate_keeper', destination_id=dest1.id)
-            gate1.set_password('password123')
+            gate1.set_password('gatemegiloka')
 
             db.session.add_all([admin_user, cashier1, gate1])
             db.session.commit()
@@ -378,13 +385,13 @@ def index():
         events=upcoming_events,
         promos=active_promos,
         spotlight_items=spotlight_items,
-        holiday_updates=holiday_feed.view(),
+        promo_feed=holiday_feed.promo_view(),
     )
 
 
 @app.get('/agenda-libur/pembaruan')
 def holiday_updates_partial():
-    response = app.make_response(render_template('holiday_feed.html', holiday_updates=holiday_feed.view()))
+    response = app.make_response(render_template('promo_feed.html', promo_feed=holiday_feed.promo_view()))
     response.cache_control.no_store = True
     return response
 
@@ -1126,7 +1133,7 @@ def event_create():
 @app.route('/calendar')
 def public_calendar():
     events = Event.query.order_by(Event.event_date.asc()).all()
-    return render_template('calendar.html', events=events)
+    return render_template('calendar.html', events=events, instagram_events=holiday_feed.instagram_events())
 
 # ----------------------------
 # AUTHENTICATION

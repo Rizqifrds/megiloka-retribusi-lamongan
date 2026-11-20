@@ -5,18 +5,19 @@ import logging
 import re
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timedelta
-from html import unescape
+from html import escape, unescape
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from threading import Event, Lock, Thread
 from time import monotonic
-from urllib.parse import urljoin, urlsplit
+from urllib.parse import urlencode, urljoin, urlsplit
 from urllib.request import Request, urlopen
 
 from ai.dates import MONTH_LOOKUP, WIB, format_date, today_wib
 
 DISTRICT = 'https://disbudporapar.lamongankab.go.id'
 WBL = 'https://wisatabaharilamongan.com'
+WBL_INSTAGRAM = 'wisatabaharilamonganpark'
 INTERVAL = 300
 LOG = logging.getLogger(__name__)
 MONTH = '|'.join(MONTH_LOOKUP)
@@ -250,10 +251,36 @@ def _https_url(value):
     return url.scheme == 'https' and bool(url.hostname) and url.username is None and url.password is None
 
 
+def _instagram_items(version, user_id, token):
+    if not re.fullmatch(r'v\d+\.\d+', version) or not re.fullmatch(r'[0-9]+', user_id):
+        raise ValueError('Invalid Instagram Graph version or user ID')
+    fields = f'business_discovery.username({WBL_INSTAGRAM}){{username,media.limit(25){{caption,permalink}}}}'
+    request = Request(
+        f'https://graph.facebook.com/{version}/{user_id}?{urlencode({"fields": fields})}',
+        headers={'Authorization': f'Bearer {token}', 'Accept': 'application/json'},
+    )
+    account = json.loads(_fetch(request))['business_discovery']
+    if account['username'].casefold() != WBL_INSTAGRAM:
+        raise ValueError('Unexpected Instagram source account')
+    entries = []
+    for post in account['media']['data']:
+        caption = post.get('caption')
+        permalink = post.get('permalink')
+        if not isinstance(caption, str) or not _https_url(permalink):
+            continue
+        link = urlsplit(permalink)
+        if link.hostname not in {'www.instagram.com', 'instagram.com'} or not re.fullmatch(r'/(?:p|reel)/[A-Za-z0-9_-]+/?', link.path):
+            continue
+        title = next((line.strip() for line in caption.splitlines() if line.strip()), '')
+        entries.extend(parse_announcements(escape(caption), title, permalink, 'Event'))
+    return entries
+
+
 class HolidayFeed:
-    def __init__(self, cache_path, partner_url=''):
+    def __init__(self, cache_path, partner_url='', instagram=None):
         self.path = Path(cache_path)
         self.partner_url = partner_url
+        self.instagram = instagram
         self.lock = Lock()
         self.worker = None
         self.partner_pending = Event()
@@ -308,6 +335,8 @@ class HolidayFeed:
         })
         if self.partner_url:
             sources['partner'] = lambda: _partner_items(self.partner_url)
+        if self.instagram:
+            sources['instagram'] = lambda: _instagram_items(*self.instagram)
         self._refresh(sources)
 
     def _refresh(self, sources):
@@ -332,6 +361,48 @@ class HolidayFeed:
             temp.replace(self.path)
         finally:
             temp.unlink(missing_ok=True)
+
+    def promo_view(self, today=None):
+        today = (today or today_wib()).isoformat()
+        now = datetime.now(WIB)
+        snapshot = self.snapshot
+        keys = ('pengumuman', 'wbl', 'agenda')
+        if self.instagram:
+            keys = ('instagram', *keys)
+        if self.partner_url:
+            keys = ('partner', *keys)
+        promos = {}
+        fresh = []
+        for key in keys:
+            source = snapshot.get(key)
+            if not source:
+                continue
+            checked = datetime.fromisoformat(source['checked'])
+            if now - checked <= timedelta(minutes=15) and source.get('complete', True):
+                fresh.append(checked)
+            if now - checked > timedelta(hours=24):
+                continue
+            for item in source['data']:
+                if item['kind'] != 'Promo' or item['end'] < today:
+                    continue
+                identity = (' '.join(re.findall(r'\w+', item['name'].casefold())), item['start'], item['end'])
+                promos.setdefault(identity, {**item, 'active': item['start'] <= today})
+        return {
+            'items': sorted(promos.values(), key=lambda item: (not item['active'], item['start'], item['name']))[:12],
+            'sources_ready': len(fresh) == len(keys),
+            'checked': min(fresh).strftime('%d/%m/%Y %H:%M WIB') if fresh else None,
+            'wbl_url': f'{WBL}/promo/',
+        }
+
+    def instagram_events(self, today=None):
+        source = self.snapshot.get('instagram') if self.instagram else None
+        if not source or datetime.now(WIB) - datetime.fromisoformat(source['checked']) > timedelta(hours=24):
+            return []
+        today = (today or today_wib()).isoformat()
+        return sorted(
+            (item for item in source['data'] if item['kind'] == 'Event' and item['end'] >= today),
+            key=lambda item: (item['start'], item['name']),
+        )
 
     def view(self, today=None, period=None):
         today = today or today_wib()

@@ -11,6 +11,52 @@ from utils import holiday_feed
 
 
 class HolidayFeedTests(unittest.TestCase):
+    def test_instagram_wbl_imports_explicit_dates_from_caption(self):
+        posts = [
+            {'caption': 'Promo WBL\nPeriode promo: 20–30 November 2026',
+             'permalink': 'https://www.instagram.com/p/promo1/'},
+            {'caption': 'Festival WBL\nTanggal acara: 25 November 2026',
+             'permalink': 'https://www.instagram.com/p/event1/'},
+            {'caption': 'Promo tanpa tanggal',
+             'permalink': 'https://www.instagram.com/p/poster1/'},
+        ]
+        response = {'business_discovery': {
+            'username': 'wisatabaharilamonganpark', 'media': {'data': posts},
+        }}
+        with patch.object(holiday_feed, '_fetch', return_value=json.dumps(response)) as fetch:
+            items = holiday_feed._instagram_items('v27.0', '123', 'test-token')
+        request = fetch.call_args.args[0]
+        self.assertNotIn('test-token', request.full_url)
+        self.assertEqual(request.get_header('Authorization'), 'Bearer test-token')
+        self.assertEqual([(row['kind'], row['start']) for row in items],
+                         [('Promo', '2026-11-20'), ('Event', '2026-11-25')])
+
+    def test_homepage_feed_uses_promo_dates_without_a_holiday_calendar(self):
+        import app as application
+
+        today = date(2026, 11, 20)
+        url = 'https://example.org/promo'
+        entries = [
+            holiday_feed._entry('Promo', 'Promo hari biasa', date(2026, 11, 19), today, url),
+            holiday_feed._entry('Promo', 'Promo minggu depan', date(2026, 11, 23), date(2026, 11, 24), url),
+            holiday_feed._entry('Promo', 'Promo lama', date(2026, 11, 17), date(2026, 11, 19), url),
+            holiday_feed._entry('Event', 'Agenda wisata', today, today, url),
+        ]
+        with TemporaryDirectory() as directory:
+            feed = holiday_feed.HolidayFeed(Path(directory) / 'feed.json')
+            feed._refresh({'wbl': lambda: entries})
+            result = feed.promo_view(today)
+            self.assertEqual([(item['name'], item['active']) for item in result['items']],
+                             [('Promo hari biasa', True), ('Promo minggu depan', False)])
+            with patch.object(application.holiday_feed, 'promo_view', return_value=result), \
+                 patch.object(application, 'get_upcoming_items', return_value=[]), \
+                 patch.dict(application.app.config, TESTING=True):
+                html = application.app.test_client().get('/agenda-libur/pembaruan').get_data(as_text=True)
+            self.assertIn('Promo hari biasa', html)
+            self.assertIn('Segera berlaku', html)
+            self.assertNotIn('Agenda wisata', html)
+            self.assertNotIn('Libur nasional', html)
+
     def test_partner_refresh_and_webhook(self):
         import app as application
 

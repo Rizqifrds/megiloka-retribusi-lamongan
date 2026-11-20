@@ -165,7 +165,7 @@ def _holiday_answer(message, today, holiday_view):
     except ValueError as exc:
         reply = str(exc)
     return {'intent': 'holiday_updates', 'confidence': 1.0, 'reply': reply,
-            'sources': [{'label': 'Promo & Event Libur Nasional', 'url': '/#agenda-libur'}],
+            'sources': [{'label': 'Promo Wisata di beranda', 'url': '/#agenda-libur'}],
             'as_of': today.isoformat(), 'timezone': 'Asia/Jakarta'}
 
 

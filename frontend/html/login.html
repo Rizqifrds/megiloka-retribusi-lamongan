@@ -17,18 +17,22 @@
 
                 <form action="{{ url_for('login') }}" method="POST">
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Username <span class="text-danger">*</span></label>
+                        <label for="login-username" class="form-label fw-semibold">Username <span
+                                class="text-danger">*</span></label>
                         <div class="input-group">
                             <span class="input-group-text"><i class="fa-solid fa-user text-muted"></i></span>
-                            <input type="text" name="username" class="form-control rounded-end" placeholder="Masukkan username" required>
+                            <input id="login-username" type="text" name="username" autocomplete="username"
+                                class="form-control rounded-end" placeholder="Masukkan username" required>
                         </div>
                     </div>
 
                     <div class="mb-4">
-                        <label class="form-label fw-semibold">Password <span class="text-danger">*</span></label>
+                        <label for="login-password" class="form-label fw-semibold">Password <span
+                                class="text-danger">*</span></label>
                         <div class="input-group">
                             <span class="input-group-text"><i class="fa-solid fa-key text-muted"></i></span>
-                            <input type="password" name="password" class="form-control rounded-end" placeholder="Masukkan password" required>
+                            <input id="login-password" type="password" name="password" autocomplete="current-password"
+                                class="form-control rounded-end" placeholder="Masukkan password" required>
                         </div>
                     </div>
 
@@ -37,14 +41,5 @@
                     </button>
                 </form>
 
-                <div class="bg-light p-3 rounded-3 text-center border">
-                    <small class="text-muted d-block fw-semibold mb-1">Akun Pengujian Demo Default:</small>
-                    <small class="d-block text-dark"><strong>Admin Disparbud:</strong> admin / password123</small>
-                    <small class="d-block text-dark"><strong>Kasir Loket:</strong> kasir_drajat / password123</small>
-                    <small class="d-block text-dark"><strong>Gate Keeper:</strong> gate_drajat / password123</small>
-                </div>
+                <p class="text-center text-muted small mb-0">Gunakan akun petugas yang diberikan kepada Anda.</p>
             </div>
-        </div>
-    </div>
-</div>
-{% endblock %}

@@ -43,14 +43,9 @@
 
 <div class="container mb-5">
     <section id="agenda-libur" class="spotlight-box mb-5 p-4" aria-labelledby="agenda-libur-title">
-        <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-3">
-            <h2 id="agenda-libur-title" class="h4 fw-bold mb-0">Promo &amp; Event Libur Nasional</h2>
-            <button type="button" class="btn btn-outline-primary btn-sm rounded-pill" onclick="askMegi('Ada promo atau event saat libur nasional?')">
-                Tanya Megi
-            </button>
-        </div>
+        <h2 id="agenda-libur-title" class="h4 fw-bold mb-3">Promo Wisata</h2>
         <div id="holiday-feed-content" data-url="{{ url_for('holiday_updates_partial') }}" aria-live="polite">
-            {% include "holiday_feed.html" %}
+            {% include "promo_feed.html" %}
         </div>
     </section>
 

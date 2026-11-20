@@ -14,6 +14,9 @@ class Config:
     SECRET_KEY = os.getenv('SECRET_KEY', 'megiloka_lamongan_megilan_secret_key_2026')
     HOLIDAY_PARTNER_URL = os.getenv('HOLIDAY_PARTNER_URL', '').strip()
     HOLIDAY_WEBHOOK_TOKEN = os.getenv('HOLIDAY_WEBHOOK_TOKEN', '')
+    INSTAGRAM_GRAPH_VERSION = os.getenv('INSTAGRAM_GRAPH_VERSION', '').strip()
+    INSTAGRAM_IG_USER_ID = os.getenv('INSTAGRAM_IG_USER_ID', '').strip()
+    INSTAGRAM_ACCESS_TOKEN = os.getenv('INSTAGRAM_ACCESS_TOKEN', '').strip()
     
     DB_TYPE = os.getenv('DB_TYPE', 'sqlite').lower()
     DB_HOST = os.getenv('DB_HOST', '127.0.0.1')

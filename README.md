@@ -181,9 +181,25 @@ ulang server. Setelah API pengelola memublikasikan perubahan, pengelola
 mengirim `POST /api/agenda-libur/webhook` ke alamat HTTPS publik MegiLoka
 dengan header `Authorization: Bearer <token>`. Respons `202` berarti
 pembaruan masuk antrean. Jika menerima `429`, coba lagi setelah 10 detik.
-MegiLoka mengambil rincian dari API pengelola dan mencocokkan tanggal
-dengan jadwal libur nasional. Beranda terbuka meminta hasil terbaru
-setiap 30 detik.
+MegiLoka mengambil rincian dari API pengelola. Bagian Promo Wisata memakai
+periode promo untuk menampilkan pengumuman yang masih atau akan berlaku.
+Beranda terbuka meminta hasil terbaru setiap 30 detik.
+
+### Instagram Wisata Bahari Lamongan
+
+Sumber yang dipantau adalah `@wisatabaharilamonganpark`. Untuk mengaktifkan
+Business Discovery, buat aplikasi Meta memakai Instagram API with Facebook
+Login dan hubungkan akun Instagram profesional proyek ke Halaman Facebook.
+Isi konfigurasi berikut di file `.env` server, lalu mulai ulang aplikasi.
+
+- `INSTAGRAM_GRAPH_VERSION`: versi Graph API yang digunakan aplikasi Meta.
+- `INSTAGRAM_IG_USER_ID`: ID akun Instagram profesional yang mengotorisasi aplikasi.
+- `INSTAGRAM_ACCESS_TOKEN`: token dari Meta dengan izin untuk Business Discovery.
+
+Sinkronisasi mengambil hingga 25 kiriman terkini setiap lima menit. Format
+caption seperti `Periode promo: 20–30 November 2026` dan
+`Tanggal acara: 25 November 2026` dapat dipublikasikan otomatis beserta
+tautan kirimannya. Tanggal dalam gambar tidak diproses.
 
 ---
 
