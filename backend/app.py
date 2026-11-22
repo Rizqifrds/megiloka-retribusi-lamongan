@@ -24,6 +24,8 @@ from config import Config
 from models import db, Destination, User, TicketType, Transaction, Ticket, PADReportRecap, Hotel, Promo, Event
 from utils.qr_generator import create_ticket_qr_payload, verify_qr_payload, generate_qr_image_base64
 from utils.holiday_feed import HolidayFeed
+from utils.lamongan_calendar import POSTER_PAGE, POSTER_YEAR, poster_months
+from ai.dates import today_wib
 from ai.concierge import answer_question
 from ai.intent_model import ModelUnavailable
 from utils.ai_service import (
@@ -1133,7 +1135,13 @@ def event_create():
 @app.route('/calendar')
 def public_calendar():
     events = Event.query.order_by(Event.event_date.asc()).all()
-    return render_template('calendar.html', events=events, instagram_events=holiday_feed.instagram_events())
+    today = today_wib()
+    return render_template(
+        'calendar.html', events=events, instagram_events=holiday_feed.instagram_events(today),
+        poster_months=poster_months(today), poster_year=POSTER_YEAR, poster_source=POSTER_PAGE,
+        poster_page_updated=holiday_feed.poster_page_updated(),
+        district_events=holiday_feed.district_events(today),
+    )
 
 # ----------------------------
 # AUTHENTICATION

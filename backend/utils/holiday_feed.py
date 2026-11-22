@@ -14,6 +14,7 @@ from urllib.parse import urlencode, urljoin, urlsplit
 from urllib.request import Request, urlopen
 
 from ai.dates import MONTH_LOOKUP, WIB, format_date, today_wib
+from utils.lamongan_calendar import POSTER_API, POSTER_TRANSCRIBED_VERSION
 
 DISTRICT = 'https://disbudporapar.lamongankab.go.id'
 WBL = 'https://wisatabaharilamongan.com'
@@ -328,6 +329,7 @@ class HolidayFeed:
             'agenda': lambda: _district_items('/kategori/agenda', 'Event'),
             'pengumuman': lambda: _district_items('/kategori/Pengumuman', 'Promo'),
             'wbl': _wbl_items,
+            'lamongan_poster': lambda: json.loads(_fetch(POSTER_API))['modified'],
         }
         sources.update({
             str(year): lambda year=year: parse_holidays(_fetch(holiday_source(year)), year)
@@ -403,6 +405,26 @@ class HolidayFeed:
             (item for item in source['data'] if item['kind'] == 'Event' and item['end'] >= today),
             key=lambda item: (item['start'], item['name']),
         )
+
+    def poster_page_updated(self):
+        observed = self.snapshot.get('lamongan_poster', {}).get('data')
+        return isinstance(observed, str) and observed != POSTER_TRANSCRIBED_VERSION
+
+    def district_events(self, today=None):
+        """Expose dated district announcements from the existing sync snapshot."""
+        today = (today or today_wib()).isoformat()
+        now = datetime.now(WIB)
+        records = {}
+        snapshot = self.snapshot
+        for key in ('agenda', 'pengumuman'):
+            source = snapshot.get(key)
+            if not source or now - datetime.fromisoformat(source['checked']) > timedelta(hours=24):
+                continue
+            for event in source['data']:
+                if event['kind'] == 'Event' and event['end'] >= today:
+                    identifier = (event['name'].casefold(), event['start'], event['end'])
+                    records.setdefault(identifier, event)
+        return sorted(records.values(), key=lambda event: (event['start'], event['name']))
 
     def view(self, today=None, period=None):
         today = today or today_wib()

@@ -112,7 +112,10 @@ class HolidayFeedTests(unittest.TestCase):
             feed = holiday_feed.HolidayFeed(cache_path)
             holiday_data = {'2026-12-25': 'Natal'}
             articles = {'Event': confirmed, 'Promo': promo}
-            with patch.object(holiday_feed, '_fetch', return_value='published HTML'), \
+            with patch.object(holiday_feed, '_fetch', side_effect=lambda url: (
+                     json.dumps({'modified': holiday_feed.POSTER_TRANSCRIBED_VERSION})
+                     if url == holiday_feed.POSTER_API else 'published HTML'
+                 )), \
                  patch.object(holiday_feed, 'parse_holidays', return_value=holiday_data), \
                  patch.object(holiday_feed, '_district_items',
                               side_effect=lambda path, category: (articles[category], True)), \
