@@ -27,7 +27,7 @@ from flask import (
 from sqlalchemy.exc import IntegrityError
 
 from config import Config
-from destination_catalog import catalog_by_code, upgrade_visit_schema
+from destination_catalog import catalog_by_code, seed_booking_rates, upgrade_visit_schema
 from models import db, Destination, User, TicketType, Transaction, Ticket, PADReportRecap, Hotel, Promo, Event
 from utils.qr_generator import create_ticket_qr_payload, verify_qr_payload, generate_qr_image_base64
 from utils.holiday_feed import HolidayFeed
@@ -128,6 +128,8 @@ def seed_database():
                 for code, category in categories.items()
             ]
             db.session.add_all([dest1, dest2, dest3, dest4, dest5])
+            seed_booking_rates(dest3)
+            seed_booking_rates(dest4)
             db.session.flush()
 
             # Add Users
@@ -268,8 +270,6 @@ def holiday_partner_webhook():
 TAG_GROUPS = {
     'bahari': {
         'name': 'Bahari & Pesisir',
-        'icon': 'fa-water',
-        'color': '#0284c7',
         'tags': [
             'Taman Rekreasi Bahari',
             'Wisata Bahari & Pesisir',
@@ -280,8 +280,6 @@ TAG_GROUPS = {
     },
     'religi_sejarah': {
         'name': 'Religi & Cagar Budaya',
-        'icon': 'fa-mosque',
-        'color': '#16a34a',
         'tags': [
             'Wisata Religi & Sejarah',
             'Wisata Religi & Arsitektur',
@@ -293,8 +291,6 @@ TAG_GROUPS = {
     },
     'alam': {
         'name': 'Alam & Konservasi',
-        'icon': 'fa-tree',
-        'color': '#059669',
         'tags': [
             'Wisata Alam & Edukasi',
             'Wisata Alam & Spot Foto',
@@ -304,9 +300,7 @@ TAG_GROUPS = {
         ]
     },
     'rekreasi': {
-        'name': 'Taman Rekreasi & Keluarga',
-        'icon': 'fa-ferris-wheel',
-        'color': '#ea580c',
+        'name': 'Rekreasi Keluarga',
         'tags': [
             'Taman Hiburan & Rekreasi Keluarga',
             'Taman Kota & Rekreasi Publik'
@@ -314,8 +308,6 @@ TAG_GROUPS = {
     },
     'edukasi': {
         'name': 'Edukasi & Museum',
-        'icon': 'fa-landmark-dome',
-        'color': '#4f46e5',
         'tags': [
             'Wisata Edukasi & Outbound',
             'Museum Edukasi & Teknologi AR'
@@ -326,12 +318,14 @@ TAG_GROUPS = {
 @app.route('/destinations')
 def destinations():
     search_query = request.args.get('q', '').strip()
-    selected_group = request.args.get('group', '').strip()
+    groups = map(str.strip, request.args.getlist('group'))
+    selected_groups = list(dict.fromkeys(group for group in groups if group in TAG_GROUPS))
 
-    # Support multiple tags (getlist for ?tags=A&tags=B or comma separated)
-    selected_tags = request.args.getlist('tags')
-    if not selected_tags and request.args.get('tags'):
-        selected_tags = [t.strip() for t in request.args.get('tags').split(',') if t.strip()]
+    # Keep existing links that filter on individual categories.
+    selected_tags = [
+        tag.strip() for value in request.args.getlist('tags')
+        for tag in value.split(',') if tag.strip()
+    ]
 
     # Backward compatibility with single category
     legacy_cat = request.args.get('category', '').strip()
@@ -347,34 +341,20 @@ def destinations():
         )
 
     if selected_tags:
+        selected_groups = []
         query = query.filter(Destination.category.in_(selected_tags))
-    elif selected_group and selected_group in TAG_GROUPS:
-        query = query.filter(Destination.category.in_(TAG_GROUPS[selected_group]['tags']))
+    elif selected_groups:
+        categories = [tag for group in selected_groups for tag in TAG_GROUPS[group]['tags']]
+        query = query.filter(Destination.category.in_(categories))
 
     all_destinations = query.order_by(Destination.name.asc()).all()
-
-    # Hitung jumlah per tag
-    dest_counts_rows = db.session.query(
-        Destination.category, db.func.count(Destination.id)
-    ).filter(Destination.is_active == True).group_by(Destination.category).all()
-    tag_counts = {cat_name: cnt for cat_name, cnt in dest_counts_rows}
-
-    # Hitung jumlah per kelompok
-    group_counts = {}
-    for g_key, g_data in TAG_GROUPS.items():
-        group_counts[g_key] = sum(tag_counts.get(tag, 0) for tag in g_data['tags'])
-
-    total_dest_count = Destination.query.filter_by(is_active=True).count()
 
     return render_template(
         'destinations.html',
         destinations=all_destinations,
         tag_groups=TAG_GROUPS,
-        group_counts=group_counts,
-        selected_group=selected_group,
+        selected_groups=selected_groups,
         selected_tags=selected_tags,
-        tag_counts=tag_counts,
-        total_dest_count=total_dest_count,
         search_query=search_query
     )
 
@@ -463,7 +443,9 @@ def ticket_view(invoice_number):
             'qr_b64': qr_b64
         })
 
-    return render_template('ticket_view.html', transaction=transaction, ticket_data_list=ticket_data_list)
+    response = app.make_response(render_template('ticket_view.html', transaction=transaction, ticket_data_list=ticket_data_list))
+    response.cache_control.no_store = True
+    return response
 
 # ----------------------------
 # POS LOKET & GATE VALIDATION
@@ -643,6 +625,8 @@ def api_validate_qr():
 
     if ticket.status in ['expired', 'cancelled']:
         return jsonify({'success': False, 'message': f'Tiket ini sudah tidak berlaku (Status: {ticket.status.upper()}).', 'status_code': 'EXPIRED'}), 200
+    if ticket.transaction.invoice_number.startswith('INV-RSV-') and ticket.valid_for_date != today_wib():
+        return jsonify(success=False, message='Tiket berlaku pada tanggal kunjungan yang tertera.', status_code='VISIT_DATE'), 200
 
     # Verification Success - Mark as USED
     ticket.status = 'used'

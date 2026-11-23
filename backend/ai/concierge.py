@@ -241,8 +241,8 @@ def answer_question(message: str, today=None, holiday_view=None) -> dict:
     elif intent in ('destination_info', 'ticket_price', 'opening_hours', 'parking'):
         reply, sources = destination_answer(message, today, intent)
     elif intent == 'booking':
-        reply = ('Untuk memesan tiket: buka Destinasi Wisata, pilih destinasi, klik pemesanan, isi nama dan tanggal kunjungan, pilih jenis/jumlah tiket serta metode pembayaran yang tersedia. '
-                 'Periksa total sebelum mengirim formulir.\n\nCatatan proyek: alur pembayaran saat ini merupakan simulasi aplikasi, belum verifikasi pembayaran bank/payment gateway. Jangan menganggap status “paid” sebagai bukti pembayaran nyata.')
+        reply = ('Buka Destinasi Wisata dan pilih tempat dengan tombol Pesan Tiket. Isi nama, pilih tanggal kunjungan dan jumlah tiket, lalu buat reservasi. '
+                 'Tunjukkan nomor reservasi saat bayar tunai di loket. Tiket QR tersedia setelah petugas mengonfirmasi pembayaran.')
         sources = [{'label': 'Pilih destinasi untuk memesan', 'url': '/destinations'}]
     elif intent == 'greeting':
         reply, sources = 'Halo! Saya Megi, asisten lokal proyek MegiLoka. ' + HELP, []

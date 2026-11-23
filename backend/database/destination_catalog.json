@@ -30,26 +30,26 @@
     "name": "Maharani Zoo & Goa",
     "location": "Jl. Raya Paciran, Desa Paciran, Kecamatan Paciran, Kabupaten Lamongan",
     "description": "Wisata keluarga yang memadukan taman satwa dengan Goa Maharani, gua kapur dengan formasi stalaktit dan stalagmit.",
-    "source_url": "https://www.maharanizoo.com/reservation/",
+    "source_url": "https://www.maharanizoo.com/product/maharani-zoo-goa/",
     "admission_status": "paid",
-    "admission_info": "Katalog reservasi memuat tiket Maharani Zoo & Goa Rp52.500–Rp70.000. Cek harga untuk tanggal kunjungan di situs pengelola.",
+    "admission_info": "Halaman produk menampilkan tarif acuan Rp30.000. Petugas loket mengonfirmasi tarif sesuai tanggal, termasuk akhir pekan dan musim libur.",
     "parking_info": null,
     "image_url": "https://www.maharanizoo.com/wp-content/uploads/2018/10/IMG_9984.jpg",
     "image_source_url": "https://www.maharanizoo.com/taman-satwa/",
-    "ticket_url": "https://www.maharanizoo.com/reservation/"
+    "ticket_url": null
   },
   {
     "code": "DEST-WBL",
     "name": "Wisata Bahari Lamongan (WBL)",
     "location": "Jl. Raya Paciran, Desa Paciran, Kecamatan Paciran, Kabupaten Lamongan",
     "description": "Taman rekreasi pesisir di kawasan Tanjung Kodok dengan wahana permainan dan wahana air. Pilihan tiket bergantung pada paket.",
-    "source_url": "https://disbudporapar.lamongankab.go.id/posting/49092",
+    "source_url": "https://www.maharanizoo.com/product/wisata-bahari-lamongan/",
     "admission_status": "paid",
-    "admission_info": "Katalog reservasi memuat WBL Rp75.000–Rp100.000 dan paket WBL + Maharani Rp97.500–Rp130.000. Cek paket dan tarif untuk tanggal kunjungan.",
+    "admission_info": "Halaman produk mencantumkan tarif acuan Rp75.000 untuk Senin–Kamis dan Rp100.000 untuk Sabtu–Minggu. Petugas mengonfirmasi tarif yang berlaku saat pembayaran.",
     "parking_info": "Area parkir tersedia. Tarif tiap jenis kendaraan belum terverifikasi.",
     "image_url": "/static/images/lamongan-wbl-hero.jpg",
     "image_source_url": "https://lamongantourism.com/destination/wisata-bahari-lamongan-wbl/",
-    "ticket_url": "https://www.maharanizoo.com/reservation/"
+    "ticket_url": null
   },
   {
     "code": "DEST-KTG",
@@ -251,13 +251,13 @@
     "name": "Indonesia Islamic Art Museum",
     "location": "Kawasan wisata Paciran, Jl. Raya Paciran, Kabupaten Lamongan",
     "description": "Museum yang memperkenalkan sejarah dan seni peradaban Islam melalui koleksi artefak dan materi pameran.",
-    "source_url": "https://lamongantourism.com/indonesia-islamic-art-museum/",
+    "source_url": "https://www.maharanizoo.com/product/musium-islam-indonesia/",
     "admission_status": "paid",
-    "admission_info": "Katalog reservasi memuat tiket museum Rp10.000–Rp15.000. Cek harga sesuai tanggal kunjungan.",
+    "admission_info": "Halaman produk mencantumkan tarif acuan Rp15.000 untuk Senin–Kamis dan Rp20.000 untuk Jumat–Minggu. Petugas mengonfirmasi tarif saat pembayaran.",
     "parking_info": null,
     "image_url": "https://lamongantourism.com/wp-content/uploads/2018/12/Museum-Seni-Islam-Indonesia-300x168.jpg",
     "image_source_url": "https://lamongantourism.com/indonesia-islamic-art-museum/",
-    "ticket_url": "https://www.maharanizoo.com/reservation/"
+    "ticket_url": null
   },
   {
     "code": "DEST-ALN-01",

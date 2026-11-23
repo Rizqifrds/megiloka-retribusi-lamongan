@@ -12,6 +12,17 @@ VISIT_FIELDS = (
     'admission_status', 'admission_info', 'parking_info', 'source_url',
     'ticket_url', 'image_source_url',
 )
+BOOKING_RATES = {
+    'DEST-WBL': (
+        ('WBL (Senin–Kamis)', 75000, 0b0001111),
+        ('WBL (Sabtu–Minggu)', 100000, 0b1100000),
+    ),
+    'DEST-MZG': (('Maharani Zoo & Goa (tarif acuan)', 30000, None),),
+    'DEST-MSI-01': (
+        ('Museum Islam Indonesia (Senin–Kamis)', 15000, 0b0001111),
+        ('Museum Islam Indonesia (Jumat–Minggu)', 20000, 0b1110000),
+    ),
+}
 
 
 def catalog_by_code():
@@ -30,6 +41,19 @@ def upgrade_visit_schema():
                 if field not in existing:
                     ddl = CreateColumn(table.c[field]).compile(dialect=connection.dialect)
                     connection.exec_driver_sql(f'ALTER TABLE {table.name} ADD COLUMN {ddl}')
+
+
+def seed_booking_rates(destination):
+    if destination.admission_status != 'paid':
+        return
+    existing = {ticket.name for ticket in destination.ticket_types}
+    for name, price, weekdays in BOOKING_RATES.get(destination.code, ()):
+        if name not in existing:
+            destination.ticket_types.append(TicketType(
+                name=name, price=price, weekdays_mask=weekdays, is_active=True,
+                description='Tarif acuan dari halaman produk. Dikonfirmasi petugas di loket.',
+            ))
+    destination.base_price = min((ticket.price for ticket in destination.available_tickets), default=0)
 
 
 def apply_catalog():
@@ -52,7 +76,9 @@ def apply_catalog():
         if destination.admission_status != 'paid':
             for ticket in destination.ticket_types:
                 ticket.is_active = False
-        destination.base_price = min((ticket.price for ticket in destination.available_tickets), default=0)
+        seed_booking_rates(destination)
+        if destination.admission_status != 'paid':
+            destination.base_price = 0
         updated.append(destination.code)
     db.session.commit()
     return updated

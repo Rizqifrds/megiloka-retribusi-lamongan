@@ -234,6 +234,9 @@ class ChatTests(unittest.TestCase):
             self.assertEqual(Transaction.query.one().payment_status, 'pending')
             with self.client.session_transaction() as sess:
                 sess.update(user_id=1, user_role='admin', reservation_csrf='test-token')
+            lookup = self.client.get('/pos', query_string={'invoice': order.invoice_number})
+            self.assertIn('Konfirmasi uang diterima', lookup.get_data(as_text=True))
+            self.assertEqual(self.client.post(path, data={'csrf_token': 'wrong'}).status_code, 403)
             for _ in range(2):
                 self.assertEqual(self.client.post(path, data={'csrf_token': 'test-token'}).status_code, 302)
             self.assertEqual(Transaction.query.one().payment_status, 'paid')

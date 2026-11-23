@@ -15,9 +15,9 @@
         <div class="col-lg-5">
             <!-- Search Form -->
             <form action="{{ url_for('destinations') }}" method="GET" class="d-flex gap-2">
-                {% if selected_group %}
-                <input type="hidden" name="group" value="{{ selected_group }}">
-                {% endif %}
+                {% for group in selected_groups %}
+                <input type="hidden" name="group" value="{{ group }}">
+                {% endfor %}
                 {% for tag in selected_tags %}
                 <input type="hidden" name="tags" value="{{ tag }}">
                 {% endfor %}
@@ -25,7 +25,7 @@
                     <span class="input-group-text bg-white border-end-0 rounded-start-pill ps-3 text-muted">
                         <i class="fa-solid fa-magnifying-glass"></i>
                     </span>
-                    <input type="text" name="q" value="{{ search_query }}" class="form-control border-start-0 rounded-end-pill py-2" placeholder="Cari nama destinasi atau lokasi...">
+                    <input type="text" name="q" value="{{ search_query }}" aria-label="Cari destinasi" class="form-control border-start-0 rounded-end-pill py-2" placeholder="Cari nama destinasi atau lokasi...">
                 </div>
                 <button type="submit" class="btn btn-primary rounded-pill px-4 fw-semibold">
                     Cari
@@ -34,180 +34,39 @@
         </div>
     </div>
 
-    <!-- 1. KELOMPOK UTAMA (Clean High-Level Group Tabs) -->
-    <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
-        <div class="group-nav-container d-flex gap-2 py-1 flex-grow-1">
-            <!-- Semua Destinasi -->
-            <a href="{{ url_for('destinations', q=search_query if search_query else None) }}" 
-               class="group-pill-btn {% if not selected_group and not selected_tags %}active{% endif %}">
-                <i class="fa-solid fa-border-all"></i>
-                <span>Semua Kategori</span>
-                <span class="count-badge">{{ total_dest_count }}</span>
-            </a>
-
-            <!-- Kelompok-Kelompok Wisata -->
-            {% for g_key, g_info in tag_groups.items() %}
-            <a href="{{ url_for('destinations', group=g_key, q=search_query if search_query else None) }}" 
-               class="group-pill-btn {% if selected_group == g_key and not selected_tags %}active{% endif %}"
-               title="{{ g_info.name }}">
-                <i class="fa-solid {{ g_info.icon }}"></i>
-                <span>{{ g_info.name }}</span>
-                <span class="count-badge">{{ group_counts.get(g_key, 0) }}</span>
-            </a>
-            {% endfor %}
-        </div>
-
-        <!-- Tombol Buka Filter Multi-Tag -->
-        <div>
-            <button class="btn btn-sm {% if selected_tags %}btn-primary{% else %}btn-outline-primary{% endif %} rounded-pill px-3 py-2 fw-semibold d-inline-flex align-items-center gap-2 shadow-sm" 
-                    type="button" 
-                    data-bs-toggle="collapse" 
-                    data-bs-target="#tagFilterDrawer" 
-                    aria-expanded="{{ 'true' if selected_tags else 'false' }}" 
-                    aria-controls="tagFilterDrawer">
-                <i class="fa-solid fa-sliders"></i>
-                <span>Filter Tag (Bisa Pilih > 1)</span>
-                {% if selected_tags %}
-                <span class="badge bg-white text-primary rounded-pill">{{ selected_tags|length }} Aktif</span>
-                {% endif %}
-                <i class="fa-solid fa-chevron-down small ms-1"></i>
-            </button>
-        </div>
-    </div>
-
-    <!-- 2. MULTI-TAG FILTER DRAWER (Collapsible, Neatly Grouped) -->
-    <div class="collapse {% if selected_tags %}show{% endif %} mb-4" id="tagFilterDrawer">
-        <div class="filter-drawer-card p-4">
-            <form id="multiTagForm" action="{{ url_for('destinations') }}" method="GET">
-                {% if search_query %}
-                <input type="hidden" name="q" value="{{ search_query }}">
-                {% endif %}
-
-                <div class="d-flex align-items-center justify-content-between pb-3 mb-3 border-bottom flex-wrap gap-2">
-                    <div>
-                        <h6 class="fw-bold mb-1 text-dark">
-                            <i class="fa-solid fa-tags text-primary me-2"></i>Pilih Tag Kategori (Multi-Select)
-                        </h6>
-                        <p class="text-muted small mb-0">Klik satu atau beberapa tag di bawah untuk mempersempit destinasi yang ingin Anda kunjungi.</p>
-                    </div>
-                    <div class="d-flex gap-2">
-                        <button type="button" class="btn btn-light btn-sm rounded-pill text-secondary border" onclick="clearAllCheckboxes()">
-                            <i class="fa-solid fa-rotate-left me-1"></i>Hapus Pilihan
-                        </button>
-                        <button type="submit" class="btn btn-primary btn-sm rounded-pill px-4 fw-bold">
-                            <i class="fa-solid fa-filter me-1"></i>Terapkan Filter
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Tag Categories Grouped -->
-                <div class="row g-3">
-                    {% for g_key, g_info in tag_groups.items() %}
-                    <div class="col-md-6 col-lg-4">
-                        <div class="p-3 bg-light rounded-4 h-100 border">
-                            <div class="d-flex align-items-center justify-content-between mb-2">
-                                <span class="fw-bold text-dark small">
-                                    <i class="fa-solid {{ g_info.icon }} me-1 group-icon-{{ g_key }}" data-color="{{ g_info.color }}"></i>
-                                    {{ g_info.name }}
-                                </span>
-                                <button type="button" class="btn btn-link p-0 text-decoration-none small text-muted" onclick="selectGroupTags('{{ g_key }}')">
-                                    Pilih Semua
-                                </button>
-                            </div>
-                            <div class="d-flex flex-wrap gap-2 group-tag-box" data-group="{{ g_key }}">
-                                {% for tag in g_info.tags %}
-                                {% set is_checked = tag in selected_tags %}
-                                <div>
-                                    <input type="checkbox" 
-                                           name="tags" 
-                                           value="{{ tag }}" 
-                                           id="tag_chk_{{ loop.index }}_{{ g_key }}" 
-                                           class="d-none multi-tag-checkbox"
-                                           {% if is_checked %}checked{% endif %}
-                                           onchange="updateApplyBtnCount()">
-                                    <label for="tag_chk_{{ loop.index }}_{{ g_key }}" class="multi-tag-label">
-                                        <i class="fa-solid fa-check check-icon d-none text-primary"></i>
-                                        <span>{{ tag }}</span>
-                                        <span class="badge bg-white text-muted border rounded-pill ms-1" style="font-size: 0.7rem;">
-                                            {{ tag_counts.get(tag, 0) }}
-                                        </span>
-                                    </label>
-                                </div>
-                                {% endfor %}
-                            </div>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-
-                <!-- Drawer Footer Actions -->
-                <div class="d-flex justify-content-end align-items-center gap-2 mt-3 pt-3 border-top">
-                    <span id="activeSelectionCount" class="small text-muted me-auto">
-                        {{ selected_tags|length }} tag dipilih saat ini.
-                    </span>
-                    <a href="{{ url_for('destinations') }}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
-                        Batal
-                    </a>
-                    <button type="submit" id="btnSubmitDrawer" class="btn btn-primary btn-sm rounded-pill px-4 fw-bold shadow-sm">
-                        <i class="fa-solid fa-check me-1"></i>Terapkan Filter
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- 3. BAR FILTER AKTIF & HASIL -->
-    {% if selected_group or selected_tags or search_query %}
-    <div class="d-flex align-items-center justify-content-between mb-4 p-3 bg-white rounded-4 border shadow-sm flex-wrap gap-2">
-        <div class="d-flex align-items-center flex-wrap gap-2">
-            <span class="small fw-bold text-muted me-1">
-                <i class="fa-solid fa-filter me-1 text-primary"></i>Filter Aktif:
-            </span>
-
-            {% if search_query %}
-            <span class="active-filter-chip">
-                <span>Pencarian: "<strong>{{ search_query }}</strong>"</span>
-                <a href="{{ url_for('destinations', group=selected_group if selected_group else None) }}" class="remove-btn" title="Hapus pencarian">
-                    <i class="fa-solid fa-xmark"></i>
+    {% set filter_count = (selected_groups or selected_tags)|length %}
+    <details class="mb-3" id="tagFilterDrawer" style="scroll-margin-top: 7rem;"
+             {% if filter_count or request.args.get('filter') == 'open' %}open{% endif %}>
+        <summary class="btn btn-outline-primary rounded-pill d-inline-flex align-items-center gap-2">
+            <i class="fa-solid fa-sliders" aria-hidden="true"></i>
+            Filter Tag{% if filter_count %} ({{ filter_count }}){% endif %}
+            <i class="fa-solid fa-chevron-down small" aria-hidden="true"></i>
+        </summary>
+        <div class="border rounded-4 bg-white p-3 mt-2">
+            <p class="fw-semibold mb-2" id="tagFilterLabel">Pilih satu atau beberapa kategori</p>
+            <div class="d-flex flex-wrap gap-2" role="group" aria-labelledby="tagFilterLabel">
+                {% for key, category in tag_groups.items() %}
+                {% set selected = key in selected_groups %}
+                {% set next_groups = selected_groups|reject('equalto', key)|list if selected else selected_groups + [key] %}
+                <a href="{{ url_for('destinations', group=next_groups, q=search_query or None, filter='open', _anchor='tagFilterDrawer') }}"
+                   class="btn btn-sm {{ 'btn-primary' if selected else 'btn-outline-primary' }} rounded-pill px-3 py-2"
+                   aria-label="{{ 'Hapus' if selected else 'Pilih' }} kategori {{ category.name }}">
+                    {% if selected %}<i class="fa-solid fa-check me-1" aria-hidden="true"></i>{% endif %}
+                    {{ category.name }}
                 </a>
-            </span>
-            {% endif %}
-
-            {% if selected_group and not selected_tags %}
-            <span class="active-filter-chip">
-                <span>Kelompok: <strong>{{ tag_groups[selected_group].name }}</strong></span>
-                <a href="{{ url_for('destinations', q=search_query if search_query else None) }}" class="remove-btn" title="Hapus kelompok">
-                    <i class="fa-solid fa-xmark"></i>
-                </a>
-            </span>
-            {% endif %}
-
-            {% for tag in selected_tags %}
-            <span class="active-filter-chip">
-                <span>{{ tag }}</span>
-                <button type="button" class="remove-btn" onclick="removeSingleTag('{{ tag }}')" title="Hapus tag ini">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
-            </span>
-            {% endfor %}
+                {% endfor %}
+            </div>
         </div>
+    </details>
 
-        <div class="d-flex align-items-center gap-3">
-            <span class="small text-muted fw-semibold">
-                Ditemukan <strong class="text-primary">{{ destinations|length }}</strong> destinasi
-            </span>
-            <a href="{{ url_for('destinations') }}" class="btn btn-outline-danger btn-sm rounded-pill px-3 py-1" style="font-size: 0.8rem;">
-                <i class="fa-solid fa-trash-can me-1"></i>Reset Semua
-            </a>
-        </div>
+    <div class="d-flex flex-wrap align-items-center gap-3 mb-3 small">
+        <p class="text-muted mb-0">{{ destinations|length }} destinasi{% if search_query %} untuk “{{ search_query }}”{% endif %}</p>
+        {% if filter_count %}
+        <a href="{{ url_for('destinations', q=search_query or None, filter='open', _anchor='tagFilterDrawer') }}">Hapus filter</a>
+        {% endif %}
     </div>
-    {% else %}
-    <div class="d-flex justify-content-between align-items-center mb-3 text-muted small px-1">
-        <span>Menampilkan seluruh <strong>{{ destinations|length }}</strong> destinasi wisata Lamongan</span>
-    </div>
-    {% endif %}
 
-    <!-- 4. DESTINATION CARDS GRID -->
+
     <div class="row g-4">
         {% if destinations %}
             {% for dest in destinations %}
@@ -260,7 +119,7 @@
                         {% endif %}
 
                         <p class="card-text text-secondary small mb-4 flex-grow-1" style="line-height: 1.55;">
-                            {{ dest.description|truncate(120, True, '...') }}
+                            {{ (dest.description or '')|truncate(120, True, '...') }}
                         </p>
                         <div class="d-flex gap-2 pt-2 border-top">
                             <a href="{{ url_for('destination_detail', id=dest.id) }}" class="btn btn-outline-primary btn-sm flex-fill rounded-pill fw-semibold py-2">
@@ -279,59 +138,11 @@
                 <div class="p-5 bg-white rounded-4 border shadow-sm mx-auto" style="max-width: 600px;">
                     <i class="fa-solid fa-compass-slash text-muted display-4 mb-3"></i>
                     <h5 class="fw-bold text-dark mb-2">Destinasi Wisata Tidak Ditemukan</h5>
-                    <p class="text-muted small mb-4">Tidak ada destinasi yang cocok dengan kombinasi filter atau kata kunci pencarian Anda. Silakan coba pilih tag lain atau reset filter.</p>
-                    <a href="{{ url_for('destinations') }}" class="btn btn-primary rounded-pill px-4 fw-semibold">
-                        <i class="fa-solid fa-rotate-left me-1"></i>Reset Semua Filter
-                    </a>
+                    <p class="text-muted small mb-0">Coba kata pencarian atau pilihan filter lain.</p>
                 </div>
             </div>
         {% endif %}
     </div>
 </div>
 
-<script>
-function updateApplyBtnCount() {
-    const checked = document.querySelectorAll('.multi-tag-checkbox:checked');
-    const countSpan = document.getElementById('activeSelectionCount');
-    if (countSpan) {
-        countSpan.textContent = `${checked.length} tag dipilih saat ini.`;
-    }
-}
-
-function clearAllCheckboxes() {
-    document.querySelectorAll('.multi-tag-checkbox').forEach(cb => cb.checked = false);
-    updateApplyBtnCount();
-}
-
-function selectGroupTags(groupKey) {
-    const box = document.querySelector(`.group-tag-box[data-group="${groupKey}"]`);
-    if (box) {
-        box.querySelectorAll('.multi-tag-checkbox').forEach(cb => cb.checked = true);
-        updateApplyBtnCount();
-    }
-}
-
-function removeSingleTag(tagToRemove) {
-    // Collect all existing tags except tagToRemove
-    const url = new URL(window.location.href);
-    const params = new URLSearchParams(url.search);
-    const currentTags = params.getAll('tags');
-    
-    params.delete('tags');
-    currentTags.forEach(t => {
-        if (t !== tagToRemove) {
-            params.append('tags', t);
-        }
-    });
-
-    window.location.href = url.pathname + '?' + params.toString();
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-    updateApplyBtnCount();
-    document.querySelectorAll('[data-color]').forEach(el => {
-        if (el.dataset.color) el.style.color = el.dataset.color;
-    });
-});
-</script>
 {% endblock %}

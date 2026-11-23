@@ -250,6 +250,11 @@ berdasarkan kode destinasi. Perubahan admin pada profil destinasi yang cocok aka
 ditimpa saat katalog diterapkan ulang. Riwayat transaksi, tiket, dan rekap PAD tetap tersimpan.
 
 Admin bisa mengatur status masuk, catatan tarif dan parkir, foto, serta tautan
-sumber di Kelola Destinasi. Tiket loket baru dijual melalui MegiLoka setelah admin
-menerbitkan tarif aktif untuk destinasi berbayar. Harga dari katalog operator
-ditampilkan sebagai informasi kunjungan.
+sumber di Kelola Destinasi. Reservasi tersedia untuk destinasi berbayar dengan
+tarif aktif. Jalankan impor katalog untuk menambahkan tarif acuan WBL, Maharani
+Zoo & Goa, dan Museum Islam Indonesia.
+
+Pengunjung membuat reservasi di MegiLoka dan membayar tunai di loket. Di POS,
+admin atau kasir tujuan mencari nomor reservasi, memeriksa tarif kunjungan,
+lalu mengonfirmasi uang diterima. QR diterbitkan untuk pengunjung dan PAD
+mencatat pembayaran pada hari konfirmasi.

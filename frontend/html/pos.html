@@ -23,7 +23,35 @@
         </div>
     </div>
 
-    {% if selected_dest %}
+    <section class="card border-0 shadow-sm rounded-4 p-4 mb-4" aria-labelledby="reservation-payment-title">
+        <h3 id="reservation-payment-title" class="h5">Pembayaran reservasi MegiLoka</h3>
+        <form action="{{ url_for('pos') }}" method="get" class="d-flex flex-wrap align-items-end gap-2">
+            <label class="form-label mb-0">Nomor reservasi
+                <input class="form-control" name="invoice" value="{{ invoice }}" maxlength="50" required>
+            </label>
+            <button type="submit" class="btn btn-outline-primary">Cari reservasi</button>
+        </form>
+        {% if reservation %}
+        <div class="mt-3 border-top pt-3">
+            <p class="mb-1"><strong>{{ reservation.destination.name }}</strong> · {{ reservation.visitor_name }}</p>
+            <p class="mb-2">{{ reservation.tickets|length }} tiket · Kunjungan {{ reservation.tickets[0].valid_for_date.strftime('%d/%m/%Y') if reservation.tickets else 'belum ditentukan' }}</p>
+            <ul class="small">
+                {% for ticket_type, tickets in reservation.tickets|groupby('ticket_type.name') %}
+                <li>{{ tickets|length }} × {{ ticket_type }}</li>
+                {% endfor %}
+            </ul>
+            <p>Tagihan <strong>Rp {{ "{:,.0f}".format(reservation.total_amount).replace(',', '.') }}</strong>. Cocokkan tarif dan tanggal sebelum menerima pembayaran.</p>
+            <form action="{{ url_for('confirm_reservation', invoice_number=reservation.invoice_number) }}" method="post" onsubmit="return confirm('Tunai sudah diterima sesuai tagihan dan tarif kunjungan?')">
+                <input type="hidden" name="csrf_token" value="{{ session.reservation_csrf }}">
+                <button type="submit" class="btn btn-primary">Konfirmasi uang diterima</button>
+            </form>
+        </div>
+        {% elif invoice %}
+        <p class="small text-muted mt-3 mb-0">Tidak ada reservasi menunggu pembayaran dengan nomor tersebut.</p>
+        {% endif %}
+    </section>
+
+    {% if selected_dest and ticket_types %}
     <form action="{{ url_for('pos') }}" method="POST">
         <input type="hidden" name="destination_id" value="{{ selected_dest.id }}">
         
@@ -92,6 +120,8 @@
             </div>
         </div>
     </form>
+    {% elif selected_dest %}
+    <p class="text-muted">Belum ada tiket loket dengan tarif untuk hari ini pada destinasi ini.</p>
     {% endif %}
 </div>
 {% endblock %}
