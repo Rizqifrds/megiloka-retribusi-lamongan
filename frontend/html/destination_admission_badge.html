@@ -1,0 +1,7 @@
+{% if dest.admission_status != 'unknown' %}
+<div class="price-badge-modern">
+    {% if dest.admission_status == 'free' %}Gratis
+    {% elif dest.available_tickets %}Mulai Rp {{ "{:,.0f}".format(dest.base_price).replace(',', '.') }}
+    {% else %}Berbayar{% endif %}
+</div>
+{% endif %}

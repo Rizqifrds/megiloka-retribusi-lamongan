@@ -1,0 +1,20 @@
+<label class="form-label small fw-semibold d-block mb-3">
+    Status masuk
+    <select name="admission_status" class="form-select rounded-3">
+        {% for value, label in [('unknown', 'Tarif belum terverifikasi'), ('free', 'Gratis'), ('paid', 'Berbayar')] %}
+        <option value="{{ value }}" {% if form_dest and form_dest.admission_status == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
+</label>
+{% for key, label in [('admission_info', 'Informasi tiket dan tarif yang dipublikasikan'), ('parking_info', 'Informasi parkir')] %}
+<label class="form-label small fw-semibold d-block mb-3">
+    {{ label }}
+    <textarea name="{{ key }}" class="form-control rounded-3" rows="2">{{ form_dest|attr(key) or '' if form_dest else '' }}</textarea>
+</label>
+{% endfor %}
+{% for key, label in [('source_url', 'URL sumber informasi'), ('ticket_url', 'URL tiket pengelola (jika berbayar)'), ('image_url', 'URL foto destinasi'), ('image_source_url', 'URL kredit atau sumber foto')] %}
+<label class="form-label small fw-semibold d-block mb-3">
+    {{ label }}
+    <input name="{{ key }}" type="text" class="form-control rounded-3" value="{{ form_dest|attr(key) or '' if form_dest else '' }}">
+</label>
+{% endfor %}

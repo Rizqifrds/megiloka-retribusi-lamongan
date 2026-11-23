@@ -21,7 +21,7 @@
             <div class="card border-0 shadow-sm rounded-4 p-4 bg-white h-100">
                 <div class="d-flex justify-content-between align-items-start mb-3">
                     <div class="d-flex align-items-center">
-                        <img src="{{ dest.image_url }}" alt="{{ dest.name }}" class="rounded-3 me-3" style="width: 70px; height: 70px; object-fit: cover;">
+                        {% if dest.image_url %}<img src="{{ dest.image_url }}" alt="" class="rounded-3 me-3" style="width: 70px; height: 70px; object-fit: cover;">{% endif %}
                         <div>
                             <span class="badge bg-light text-primary border font-monospace">{{ dest.code }}</span>
                             <h5 class="fw-bold text-dark mb-0">{{ dest.name }}</h5>
@@ -41,17 +41,21 @@
 
                 <div class="border-top pt-3 mb-3">
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="fw-bold small text-dark">Kategori Tiket Retribusi Terdaftar:</span>
-                        <button class="btn btn-sm btn-link text-decoration-none p-0 text-primary fw-bold" data-bs-toggle="modal" data-bs-target="#modalAddTicket{{ dest.id }}">
+                        <span class="fw-bold small text-dark">Tarif loket aktif</span>
+                        {% if dest.is_active and dest.admission_status == 'paid' %}<button class="btn btn-sm btn-link text-decoration-none p-0 text-primary fw-bold" data-bs-toggle="modal" data-bs-target="#modalAddTicket{{ dest.id }}">
                             + Tambah Tarif
-                        </button>
+                        </button>{% endif %}
                     </div>
                     <ul class="list-group list-group-flush">
-                        {% for tt in dest.ticket_types %}
+                        {% for tt in dest.available_tickets %}
                         <li class="list-group-item px-0 d-flex justify-content-between align-items-center bg-transparent py-1">
                             <span class="small text-secondary">• {{ tt.name }}</span>
-                            <span class="fw-bold text-success small">Rp {{ "{:,.0f}".format(tt.price) }}</span>
+                            <form method="post" action="{{ url_for('ticket_type_retire', id=tt.id) }}" onsubmit="return confirm('Nonaktifkan tarif loket ini?')">
+                                <span class="fw-bold text-success small me-2">Rp {{ "{:,.0f}".format(tt.price).replace(',', '.') }}</span>
+                                <button class="btn btn-sm btn-outline-secondary" type="submit">Nonaktifkan</button>
+                            </form>
                         </li>
+                        {% else %}<li class="list-group-item small text-muted px-0">Belum ada tarif loket aktif.</li>
                         {% endfor %}
                     </ul>
                 </div>
@@ -80,17 +84,11 @@
                                     <input type="text" name="location" value="{{ dest.location }}" class="form-control rounded-3" required>
                                 </div>
                                 <div class="mb-3">
-                                    <label class="form-label small fw-semibold">Harga Dasar (Rp)</label>
-                                    <input type="number" name="base_price" value="{{ dest.base_price }}" class="form-control rounded-3" required>
-                                </div>
-                                <div class="mb-3">
                                     <label class="form-label small fw-semibold">Deskripsi Singkat</label>
                                     <textarea name="description" class="form-control rounded-3" rows="3">{{ dest.description }}</textarea>
                                 </div>
-                                <div class="mb-3">
-                                    <label class="form-label small fw-semibold">URL Foto Sampul</label>
-                                    <input type="text" name="image_url" value="{{ dest.image_url }}" class="form-control rounded-3">
-                                </div>
+                                {% with form_dest=dest %}{% include 'admin/destination_visit_fields.html' %}{% endwith %}
+                                <label><input type="checkbox" name="is_active" {% if dest.is_active %}checked{% endif %}> Tampilkan di katalog</label>
                             </div>
                             <div class="modal-footer border-0 pt-0">
                                 <button type="button" class="btn btn-light rounded-pill" data-bs-dismiss="modal">Batal</button>
@@ -114,7 +112,7 @@
                             <div class="modal-body">
                                 <p class="text-muted small">Destinasi: <strong>{{ dest.name }}</strong></p>
                                 <div class="mb-3">
-                                    <label class="form-label small fw-semibold">Nama Tiket (Misal: Anak / Dewasa / Parkir)</label>
+                                    <label class="form-label small fw-semibold">Nama Tiket Masuk (misalnya Anak atau Dewasa)</label>
                                     <input type="text" name="name" class="form-control rounded-3" placeholder="Contoh: Tiket Dewasa" required>
                                 </div>
                                 <div class="mb-3">
@@ -167,17 +165,10 @@
                         <input type="text" name="location" class="form-control rounded-3" placeholder="Kecamatan Paciran, Kab. Lamongan" required>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label small fw-semibold">Harga Retribusi Dasar (Rp)</label>
-                        <input type="number" name="base_price" class="form-control rounded-3" placeholder="10000" required>
-                    </div>
-                    <div class="mb-3">
                         <label class="form-label small fw-semibold">Deskripsi Wisata</label>
                         <textarea name="description" class="form-control rounded-3" rows="3" placeholder="Deskripsi daya tarik wisata..."></textarea>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label small fw-semibold">URL Foto Sampul</label>
-                        <input type="text" name="image_url" class="form-control rounded-3" placeholder="https://images.unsplash.com/...">
-                    </div>
+                    {% with form_dest=none %}{% include 'admin/destination_visit_fields.html' %}{% endwith %}
                 </div>
                 <div class="modal-footer border-0 pt-0">
                     <button type="button" class="btn btn-light rounded-pill" data-bs-dismiss="modal">Batal</button>

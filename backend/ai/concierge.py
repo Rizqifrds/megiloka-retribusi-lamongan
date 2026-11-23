@@ -15,8 +15,12 @@ HELP = ('Saya membantu informasi wisata Lamongan: jadwal dan detail event, lokas
 # Remove query grammar, but keep identifying words: unknown names must not match
 # merely because they contain generic terms such as "Festival" or "Lamongan".
 STOP = set('''apa apakah adakah saja ada yang akan untuk dan atau di ke dari pada dengan dalam masih saya tolong tampilkan tunjukkan daftar cari carikan lihat informasi informasikan info tentang ceritakan jelaskan ingin tahu mau bisa boleh ya dong itu ini tersebut wisata pariwisata destinasi tempat objek lokasi alamat lengkap letak letaknya daerah mana dimana terletak bagaimana kegiatan event acara agenda kalender jadwal festival akbar lamongan kapan tanggal pelaksanaan dilaksanakan dilangsungkan diselenggarakan diselenggarakannya berlangsung berlangsungnya diadakan penyelenggaraan mulai dimulai selesai berakhir sudah lewat belum detail rincian uraian deskripsi penjelasan tema isi berapa hari lagi pukul jam berapakah harganya harga tarif biaya ongkos masuk tiket karcis dewasa anak retribusi rupiah bayar terbaru promo diskon potongan saat sekarang kunjungan buka tutup dibuka beroperasi operasional sampai setiap hari minggu bulan tahun depan besok lusa kemarin akhir pekan weekend mendatang terdekat baru liburan pagi siang sore malam waktu selama esok tersedia tercatat'''.split()) | set(MONTH_LOOKUP)
-ALIASES = {'wisata bahari lamongan': 'wbl', 'goa maharani': 'maharani', 'sundra': 'sunan drajat'}
-STOP.update(('pekan', 'resmi', 'kabupaten', 'budaya', 'kebudayaan'))
+ALIASES = {
+    'wisata bahari lamongan': 'wbl', 'goa maharani': 'maharani', 'sundra': 'sunan drajat',
+    'museum seni islam indonesia': 'indonesia islamic art museum',
+    'pohon trinil': 'akar langit trinil', 'gunung mas mantup': 'istana gunung mas',
+}
+STOP.update(('pekan', 'resmi', 'kabupaten', 'budaya', 'kebudayaan', 'parkir', 'parkirnya'))
 
 
 def tokens(text):
@@ -46,6 +50,14 @@ def source_event(event):
 
 def source_destination(dest):
     return {'label': dest.name, 'url': f'/destinations/{dest.id}', 'type': 'destination', 'id': dest.id}
+
+
+def admission_summary(dest):
+    if dest.admission_status == 'free':
+        return dest.admission_info or 'Kunjungan gratis. Tidak perlu tiket masuk.'
+    if dest.admission_info:
+        return dest.admission_info
+    return 'Tarif masuk belum terverifikasi. Konfirmasi ke pengelola.'
 
 
 def event_summary(event, today, detail=False):
@@ -147,24 +159,29 @@ def destination_answer(message, today, intent):
         return 'Sebutkan nama destinasi yang tercantum di MegiLoka, misalnya Pantai Kutang atau WBL. Saya tidak menemukan kecocokan yang cukup jelas.', [{'label': 'Destinasi Wisata', 'url': '/destinations'}]
     d = selected[0]
     sources = [source_destination(d)]
+    if intent == 'parking':
+        return f'Parkir **{d.name}**: {d.parking_info or "Tarif parkir belum terverifikasi."}', sources
     if intent == 'opening_hours':
         return f'Jam buka/tutup dan hari operasional **{d.name}** belum tersedia dalam data aplikasi. Konfirmasi ke pengelola sebelum berkunjung.' + PROVENANCE, sources
     if intent == 'ticket_price':
         text = f'Harga tiket **{d.name}** pada data aplikasi:\n'
-        if d.ticket_types:
-            text += '\n'.join(f'• {t.name}: **{rupiah(t.price)}** per tiket' for t in d.ticket_types)
+        if d.available_tickets:
+            text += '\n'.join(f'• {t.name}: **{rupiah(t.price)}** per tiket' for t in d.available_tickets)
         else:
-            text += f'• Tarif dasar: **{rupiah(d.base_price)}**. Jenis tiket belum tersedia; konfirmasi ke pengelola.'
-        promos = Promo.query.filter(Promo.destination_id == d.id, Promo.valid_from <= today, Promo.valid_until >= today).all()
+            text += admission_summary(d)
+        promos = Promo.query.filter(Promo.destination_id == d.id, Promo.valid_from <= today, Promo.valid_until >= today).all() if d.admission_status == 'paid' else []
         if promos:
             text += '\n\nPromo destinasi yang tercatat:\n' + '\n'.join(f'• {p.name}, berlaku sampai {format_date(p.valid_until)}.' for p in promos)
             text += '\nKonfirmasi syarat promo ke pengelola. Harga di atas mengikuti jenis tiket pada formulir pemesanan; diskon belum otomatis diterapkan oleh alur booking saat ini.'
         text += '\nTarif dapat berubah; periksa kembali sebelum memesan.'
-        sources.append({'label': 'Lihat pilihan tiket', 'url': f'/booking/{d.id}'})
+        if d.available_tickets:
+            sources.append({'label': 'Lihat pilihan tiket', 'url': f'/booking/{d.id}'})
         return text + PROVENANCE, sources
     text = f'**{d.name}**\nAlamat: {d.location}\nKategori: {d.category}'
     if d.description:
         text += '\n' + d.description
+    text += f'\nInformasi masuk: {admission_summary(d)}'
+    text += f'\nParkir: {d.parking_info or "Tarif belum terverifikasi."}'
     if d.opening_date and d.opening_date > today:
         text += f'\nTanggal pembukaan yang tercatat: {format_date(d.opening_date)}; konfirmasi status pembukaan ke pengelola.'
     return text + PROVENANCE, sources
@@ -209,6 +226,9 @@ def answer_question(message: str, today=None, holiday_view=None) -> dict:
             return holiday_answer
     prediction = predict_intent(message)
     intent = prediction['intent']
+    if re.search(r'\bparkir(?:nya)?\b', message.casefold()):
+        intent = 'parking'
+        prediction = {**prediction, 'intent': intent, 'confidence': 1.0}
     official_events = []
     if intent in ('event_schedule', 'event_detail', 'opening_hours', 'out_of_scope', 'uncertain'):
         official_events = list(poster_events(today))
@@ -218,7 +238,7 @@ def answer_question(message: str, today=None, holiday_view=None) -> dict:
             prediction = {**prediction, 'intent': intent, 'confidence': 1.0}
     if intent in ('event_schedule', 'event_detail'):
         reply, sources = event_answer(message, today, intent, official_events)
-    elif intent in ('destination_info', 'ticket_price', 'opening_hours'):
+    elif intent in ('destination_info', 'ticket_price', 'opening_hours', 'parking'):
         reply, sources = destination_answer(message, today, intent)
     elif intent == 'booking':
         reply = ('Untuk memesan tiket: buka Destinasi Wisata, pilih destinasi, klik pemesanan, isi nama dan tanggal kunjungan, pilih jenis/jumlah tiket serta metode pembayaran yang tersedia. '

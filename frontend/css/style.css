@@ -148,11 +148,29 @@ h6,
 
 /* Navbar Modern Glassmorphism */
 .navbar-megiloka {
+    z-index: 1030;
     background: rgba(0, 29, 57, 0.94);
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+}
+
+.navbar-megiloka .notif-dropdown-menu {
+    width: min(350px, calc(100vw - 2rem));
+    border-radius: 16px;
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+}
+
+@media (max-width: 575.98px) {
+    .navbar-megiloka .guest-notification-control {
+        position: static;
+    }
+
+    .navbar-megiloka .notif-dropdown-menu {
+        inset-inline-end: 1rem;
+    }
 }
 
 .navbar-brand {

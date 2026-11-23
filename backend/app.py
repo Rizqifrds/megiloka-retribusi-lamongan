@@ -5,10 +5,13 @@ import sys
 import io
 import re
 import random
+import secrets
 import string
 import csv
 from datetime import datetime, date, timedelta
+from decimal import Decimal, InvalidOperation
 from functools import wraps
+from urllib.parse import urlsplit
 
 # Ensure backend directory is in sys.path
 BACKEND_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -19,11 +22,12 @@ PROJECT_ROOT = os.path.abspath(os.path.join(BACKEND_DIR, '..'))
 FRONTEND_DIR = os.path.join(PROJECT_ROOT, 'frontend')
 
 from flask import (
-    Flask, render_template, request, redirect, url_for, flash, session, jsonify, Response, send_from_directory
+    Flask, abort, render_template, request, redirect, url_for, flash, session, jsonify, Response, send_from_directory
 )
 from sqlalchemy.exc import IntegrityError
 
 from config import Config
+from destination_catalog import catalog_by_code, upgrade_visit_schema
 from models import db, Destination, User, TicketType, Transaction, Ticket, PADReportRecap, Hotel, Promo, Event
 from utils.qr_generator import create_ticket_qr_payload, verify_qr_payload, generate_qr_image_base64
 from utils.holiday_feed import HolidayFeed
@@ -109,52 +113,22 @@ def generate_ticket_code(dest_code):
 # Auto Database Seeder Helper
 def seed_database():
     with app.app_context():
-        db.create_all()
+        upgrade_visit_schema()
         if Destination.query.count() == 0:
-            print("[INFO] Seeding initial MegiLoka data...")
-            dest1 = Destination(
-                code='DEST-SND', name='Makam Sunan Drajat', category='Wisata Religi & Sejarah',
-                location='Kecamatan Paciran, Kab. Lamongan', base_price=10000.00,
-                description='Situs ziarah dan museum bersejarah Sunan Drajat, salah satu Walisongo penyebar agama Islam di Pantura Jawa.',
-                image_url='https://images.unsplash.com/photo-1548625361-185b9826f634?auto=format&fit=crop&w=800&q=80', is_active=True
-            )
-            dest2 = Destination(
-                code='DEST-WDG', name='Waduk Gondang', category='Wisata Alam & Edukasi',
-                location='Kecamatan Sugio, Kab. Lamongan', base_price=15000.00,
-                description='Waduk buatan seluas 6.600 Ha yang indah dengan perahu wisata, taman bermain, dan pemandangan perbukitan hijau.',
-                image_url='https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80', is_active=True
-            )
-            dest3 = Destination(
-                code='DEST-MZG', name='Maharani Zoo & Goa', category='Wisata Satwa & Geologi',
-                location='Kecamatan Paciran, Kab. Lamongan', base_price=35000.00,
-                description='Kombinasi keindahan goa stalaktit/stalagmit alami dengan kebun binatang modern koleksi satwa terlengkap.',
-                image_url='https://images.unsplash.com/photo-1534567153574-2b12153a87f0?auto=format&fit=crop&w=800&q=80', is_active=True
-            )
-            dest4 = Destination(
-                code='DEST-WBL', name='Wisata Bahari Lamongan (WBL)', category='Taman Rekreasi Bahari',
-                location='Kecamatan Paciran, Kab. Lamongan', base_price=75000.00,
-                description='Taman hiburan pesisir Pantura populer dengan puluhan wahana permainan modern, waterpark, dan wahana ekstrem.',
-                image_url='https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80', is_active=True
-            )
-            dest5 = Destination(
-                code='DEST-KTG', name='Pantai Kutang', category='Wisata Pesisir & Mangrove',
-                location='Desa Labuhan, Kec. Brondong, Kab. Lamongan', base_price=10000.00,
-                description='Destinasi wisata pantai ikonik dengan jembatan kayu melintasi hutan mangrove dan pemandangan matahari terbenam.',
-                image_url='https://images.unsplash.com/photo-1519046904884-53103b34b206?auto=format&fit=crop&w=800&q=80', is_active=True
-            )
+            catalog = catalog_by_code()
+            categories = {
+                'DEST-SND': 'Wisata Religi & Sejarah',
+                'DEST-WDG': 'Wisata Alam & Edukasi',
+                'DEST-MZG': 'Wisata Satwa & Geologi',
+                'DEST-WBL': 'Taman Rekreasi Bahari',
+                'DEST-KTG': 'Wisata Pesisir & Mangrove',
+            }
+            dest1, dest2, dest3, dest4, dest5 = [
+                Destination(category=category, **catalog[code])
+                for code, category in categories.items()
+            ]
             db.session.add_all([dest1, dest2, dest3, dest4, dest5])
-            db.session.commit()
-
-            # Add Ticket Types
-            tt1 = TicketType(destination_id=dest1.id, name='Tiket Perorangan Dewasa', price=10000.00, description='Retribusi perorangan dewasa')
-            tt2 = TicketType(destination_id=dest1.id, name='Tiket Perorangan Anak', price=5000.00, description='Retribusi anak usia 3-10 tahun')
-            tt3 = TicketType(destination_id=dest2.id, name='Tiket Dewasa Waduk Gondang', price=15000.00, description='Retribusi pengunjung dewasa')
-            tt4 = TicketType(destination_id=dest2.id, name='Tiket Anak Waduk Gondang', price=8000.00, description='Retribusi anak-anak')
-            tt5 = TicketType(destination_id=dest3.id, name='Tiket Reguler Maharani Zoo & Goa', price=35000.00, description='Tiket terusan Zoo & Goa')
-            tt6 = TicketType(destination_id=dest4.id, name='Tiket Terusan WBL', price=75000.00, description='Tiket wahana terusan WBL')
-            tt7 = TicketType(destination_id=dest5.id, name='Tiket Retribusi Pantai Kutang', price=10000.00, description='Tiket jembatan mangrove & pantai')
-            db.session.add_all([tt1, tt2, tt3, tt4, tt5, tt6, tt7])
-            db.session.commit()
+            db.session.flush()
 
             # Add Users
             admin_user = User(username='admin', full_name='Administrator Disparbud Lamongan', role='admin')
@@ -181,7 +155,7 @@ def seed_database():
                     PADReportRecap(destination_id=dest5.id, report_date=past_date, total_tickets_sold=random.randint(60, 110), total_revenue=random.randint(60, 110)*10000.0)
                 ])
             db.session.commit()
-            print("[INFO] MegiLoka Database destinations & tickets populated.")
+            print("[INFO] MegiLoka database initialized.")
 
 
 # ----------------------------
@@ -254,7 +228,10 @@ def index():
 
     # Fallback if no promo destinations found
     if not featured_destinations:
-        featured_destinations = Destination.query.filter_by(is_active=True).limit(5).all()
+        featured_destinations = Destination.query.filter_by(is_active=True).order_by(Destination.id).limit(5).all()
+    namira = Destination.query.filter_by(code='DEST-NMR-01', is_active=True, admission_status='free').first()
+    if namira and namira not in featured_destinations:
+        featured_destinations.append(namira)
 
     total_dest = Destination.query.filter_by(is_active=True).count()
 
@@ -404,8 +381,7 @@ def destinations():
 @app.route('/destinations/<int:id>')
 def destination_detail(id):
     destination = Destination.query.filter_by(id=id, is_active=True).first_or_404()
-    ticket_types = TicketType.query.filter_by(destination_id=id).all()
-    return render_template('destination_detail.html', destination=destination, ticket_types=ticket_types)
+    return render_template('destination_detail.html', destination=destination)
 
 @app.route('/booking/<int:destination_id>', methods=['GET', 'POST'])
 def booking(destination_id):
@@ -413,92 +389,70 @@ def booking(destination_id):
     if request.method == 'POST':
         destination_query = destination_query.with_for_update()
     destination = destination_query.first_or_404()
-    ticket_types = TicketType.query.filter_by(destination_id=destination_id).all()
+    ticket_types = destination.available_tickets
+    if not ticket_types:
+        return redirect(url_for('destination_detail', id=destination_id))
 
+    today = today_wib()
     if request.method == 'POST':
         visitor_name = request.form.get('visitor_name', '').strip()
         visitor_phone = request.form.get('visitor_phone', '').strip()
-        visit_date_str = request.form.get('visit_date', '').strip()
-        payment_method = request.form.get('payment_method', 'qris')
-
-        if not visitor_name or not visit_date_str:
-            flash('Nama Pengunjung dan Tanggal Kunjungan wajib diisi.', 'danger')
+        try:
+            visit_date = date.fromisoformat(request.form.get('visit_date', ''))
+            if not visitor_name or len(visitor_name) > 100 or len(visitor_phone) > 30 or visit_date < today:
+                raise ValueError
+            ticket_items = []
+            for ticket_type in ticket_types:
+                qty = int(request.form.get(f'qty_{ticket_type.id}', 0))
+                if not 0 <= qty <= 50 or (qty and not ticket_type.offered_on(visit_date)):
+                    raise ValueError
+                if qty:
+                    ticket_items.append((ticket_type, qty))
+        except ValueError:
+            flash('Periksa nama, tanggal kunjungan, dan pilihan tiket untuk tanggal tersebut.', 'danger')
+            return redirect(url_for('booking', destination_id=destination_id))
+        if not ticket_items:
+            flash('Pilih minimal satu tiket untuk tanggal tersebut.', 'warning')
             return redirect(url_for('booking', destination_id=destination_id))
 
-        visit_date = datetime.strptime(visit_date_str, '%Y-%m-%d').date()
-        invoice_num = generate_invoice_number()
-
-        total_amount = 0
-        ticket_items = []
-
-        for tt in ticket_types:
-            qty = int(request.form.get(f'qty_{tt.id}', 0))
-            if qty > 0:
-                item_total = float(tt.price) * qty
-                total_amount += item_total
-                ticket_items.append({'ticket_type': tt, 'quantity': qty})
-
-        if total_amount == 0:
-            flash('Pilih minimal 1 jumlah tiket retribusi.', 'warning')
-            return redirect(url_for('booking', destination_id=destination_id))
-
-        # Create Transaction
-        trans = Transaction(
-            invoice_number=invoice_num,
+        order = Transaction(
+            invoice_number=f'INV-RSV-{secrets.token_hex(12).upper()}',
             destination_id=destination.id,
             visitor_name=visitor_name,
             visitor_phone=visitor_phone,
-            total_amount=total_amount,
-            payment_method=payment_method,
-            payment_status='paid'
+            total_amount=sum(ticket.price * qty for ticket, qty in ticket_items),
+            payment_method='cash',
+            payment_status='pending',
         )
-        db.session.add(trans)
-        db.session.flush()
-
-        # Create Individual Tickets & QR Hashes
-        created_tickets = []
-        for item in ticket_items:
-            tt = item['ticket_type']
-            for _ in range(item['quantity']):
-                t_code = generate_ticket_code(destination.code)
-                payload, sec_hash = create_ticket_qr_payload(t_code, destination.id, str(visit_date), app.config['SECRET_KEY'])
-
-                t = Ticket(
-                    transaction_id=trans.id,
-                    ticket_type_id=tt.id,
-                    ticket_code=t_code,
-                    qr_hash=payload,
-                    status='valid',
-                    valid_for_date=visit_date
-                )
-                db.session.add(t)
-                created_tickets.append(t)
-
-        # Update PAD Recap
-        recap = PADReportRecap.query.filter_by(destination_id=destination.id, report_date=date.today()).first()
-        if recap:
-            recap.total_tickets_sold += len(created_tickets)
-            recap.total_revenue = float(recap.total_revenue) + total_amount
-        else:
-            recap = PADReportRecap(
-                destination_id=destination.id,
-                report_date=date.today(),
-                total_tickets_sold=len(created_tickets),
-                total_revenue=total_amount
-            )
-            db.session.add(recap)
-
+        db.session.add(order)
+        for ticket_type, qty in ticket_items:
+            for _ in range(qty):
+                code = generate_ticket_code(destination.code)
+                payload, _ = create_ticket_qr_payload(code, destination.id, visit_date.isoformat(), app.config['SECRET_KEY'])
+                db.session.add(Ticket(transaction=order, ticket_type=ticket_type, ticket_code=code,
+                                      qr_hash=payload, status='valid', valid_for_date=visit_date))
         db.session.commit()
-        flash(f'Pemesanan tiket berhasil! No Invoice: {invoice_num}', 'success')
-        return redirect(url_for('ticket_view', invoice_number=invoice_num))
+        return redirect(url_for('ticket_view', invoice_number=order.invoice_number))
 
-    default_date = (date.today() + timedelta(days=1)).strftime('%Y-%m-%d')
-    return render_template('booking.html', destination=destination, ticket_types=ticket_types, default_date=default_date)
+    return render_template('booking.html', destination=destination, ticket_types=ticket_types,
+                           default_date=(today + timedelta(days=1)).isoformat(),
+                           earliest_date=today.isoformat())
+
+
+def record_pad_sale(destination_id, report_date, ticket_count, amount):
+    recap = PADReportRecap.query.filter_by(destination_id=destination_id, report_date=report_date).with_for_update().first()
+    if recap is None:
+        recap = PADReportRecap(destination_id=destination_id, report_date=report_date,
+                               total_tickets_sold=0, total_revenue=0)
+        db.session.add(recap)
+    recap.total_tickets_sold += ticket_count
+    recap.total_revenue += amount
+
 
 @app.route('/tickets/<invoice_number>')
 def ticket_view(invoice_number):
     transaction = Transaction.query.filter_by(invoice_number=invoice_number).first_or_404()
-    tickets = Ticket.query.filter_by(transaction_id=transaction.id).all()
+    tickets = transaction.tickets if transaction.payment_status == 'paid' else []
 
     # Generate Base64 QR Code images for inline display
     ticket_data_list = []
@@ -519,7 +473,9 @@ def ticket_view(invoice_number):
 @login_required
 @role_required('admin', 'cashier')
 def pos():
-    destinations = Destination.query.filter_by(is_active=True).all()
+    destinations = Destination.query.filter_by(is_active=True, admission_status='paid').filter(
+        Destination.ticket_types.any(TicketType.is_active.is_(True) & (TicketType.price > 0))
+    ).all()
     selected_dest_id = request.args.get('dest_id', type=int)
     
     if not selected_dest_id and session.get('user_destination_id'):
@@ -528,7 +484,8 @@ def pos():
         selected_dest_id = destinations[0].id
 
     selected_dest = next((dest for dest in destinations if dest.id == selected_dest_id), None)
-    ticket_types = selected_dest.ticket_types if selected_dest else []
+    today = today_wib()
+    ticket_types = [ticket for ticket in selected_dest.available_tickets if ticket.offered_on(today)] if selected_dest else []
 
     if request.method == 'POST':
         visitor_name = request.form.get('visitor_name', 'Pengunjung Loket').strip()
@@ -536,14 +493,17 @@ def pos():
         dest_id = int(request.form.get('destination_id'))
         dest = Destination.query.filter_by(id=dest_id, is_active=True).with_for_update().first_or_404()
 
-        tt_list = TicketType.query.filter_by(destination_id=dest_id).all()
+        tt_list = [ticket for ticket in dest.available_tickets if ticket.offered_on(today)]
+        if not tt_list:
+            flash('Destinasi ini belum memiliki tiket loket yang aktif.', 'warning')
+            return redirect(url_for('pos'))
         total_amount = 0
         ticket_items = []
 
         for tt in tt_list:
             qty = int(request.form.get(f'qty_{tt.id}', 0))
             if qty > 0:
-                item_total = float(tt.price) * qty
+                item_total = tt.price * qty
                 total_amount += item_total
                 ticket_items.append({'ticket_type': tt, 'quantity': qty})
 
@@ -564,7 +524,7 @@ def pos():
         db.session.add(trans)
         db.session.flush()
 
-        today_date = date.today()
+        today_date = today
         created_tickets = []
         for item in ticket_items:
             tt = item['ticket_type']
@@ -582,25 +542,59 @@ def pos():
                 db.session.add(t)
                 created_tickets.append(t)
 
-        # Update PAD Recap
-        recap = PADReportRecap.query.filter_by(destination_id=dest.id, report_date=today_date).first()
-        if recap:
-            recap.total_tickets_sold += len(created_tickets)
-            recap.total_revenue = float(recap.total_revenue) + total_amount
-        else:
-            recap = PADReportRecap(
-                destination_id=dest.id,
-                report_date=today_date,
-                total_tickets_sold=len(created_tickets),
-                total_revenue=total_amount
-            )
-            db.session.add(recap)
+        record_pad_sale(dest.id, today_date, len(created_tickets), total_amount)
 
         db.session.commit()
         flash(f'Transaksi Loket Berhasil! Invoice: {invoice_num}', 'success')
         return redirect(url_for('ticket_view', invoice_number=invoice_num))
 
-    return render_template('pos.html', destinations=destinations, selected_dest=selected_dest, ticket_types=ticket_types)
+    invoice = request.args.get('invoice', '').strip().upper()
+    reservation = None
+    if invoice:
+        query = Transaction.query.filter_by(invoice_number=invoice, payment_method='cash', payment_status='pending')
+        if session['user_role'] == 'cashier':
+            query = query.filter_by(destination_id=session.get('user_destination_id'))
+        reservation = query.first()
+    if reservation and 'reservation_csrf' not in session:
+        session['reservation_csrf'] = secrets.token_urlsafe(24)
+    return render_template('pos.html', destinations=destinations, selected_dest=selected_dest, ticket_types=ticket_types,
+                           invoice=invoice, reservation=reservation)
+
+
+@app.post('/pos/reservations/<invoice_number>/confirm')
+@login_required
+@role_required('admin', 'cashier')
+def confirm_reservation(invoice_number):
+    staff = db.session.get(User, session['user_id'])
+    if staff is None or staff.role not in ('admin', 'cashier'):
+        abort(403)
+    expected = session.get('reservation_csrf')
+    provided = request.form.get('csrf_token', '')
+    if not expected or not hmac.compare_digest(expected.encode(), provided.encode()):
+        abort(403)
+    query = Transaction.query.filter_by(invoice_number=invoice_number, payment_method='cash')
+    if staff.role == 'cashier':
+        query = query.filter_by(destination_id=staff.destination_id)
+    row = query.with_entities(Transaction.destination_id).first_or_404()
+    dest = Destination.query.filter_by(id=row.destination_id).with_for_update().first_or_404()
+    order = query.with_for_update().first_or_404()
+    if order.payment_status == 'paid':
+        return redirect(url_for('ticket_view', invoice_number=order.invoice_number))
+    today = today_wib()
+    if (
+        order.payment_status != 'pending' or not dest.is_active or not order.tickets
+        or any(ticket.valid_for_date < today or ticket.status != 'valid' for ticket in order.tickets)
+    ):
+        flash('Pesanan ini sudah tidak dapat dibayar.', 'warning')
+        return redirect(url_for('pos', invoice=invoice_number))
+
+    order.payment_status = 'paid'
+    order.cashier_id = staff.id
+    record_pad_sale(dest.id, today, len(order.tickets), order.total_amount)
+    db.session.commit()
+    flash('Pembayaran diterima dan tercatat di PAD.', 'success')
+    return redirect(url_for('ticket_view', invoice_number=order.invoice_number))
+
 
 @app.route('/validator')
 @login_required
@@ -628,6 +622,9 @@ def api_validate_qr():
 
     if not ticket:
         return jsonify({'success': False, 'message': f'Kode Tiket {t_code} tidak ditemukan dalam database.', 'status_code': 'NOT_FOUND'}), 200
+
+    if ticket.transaction.payment_status != 'paid':
+        return jsonify(success=False, message='Pembayaran reservasi belum dikonfirmasi.', status_code='UNPAID'), 200
 
     if ticket.status == 'used':
         scanned_time = ticket.scanned_at.strftime('%d-%m-%Y %H:%M:%S') if ticket.scanned_at else 'Sebelumnya'
@@ -845,6 +842,28 @@ def destinations_crud():
     destinations = Destination.query.order_by(Destination.id.desc()).all()
     return render_template('admin/destinations_crud.html', destinations=destinations)
 
+def apply_visit_fields(dest):
+    status = request.form.get('admission_status', 'unknown')
+    if status not in ('unknown', 'free', 'paid'):
+        raise ValueError('Pilih status tiket masuk yang valid.')
+    for field in ('source_url', 'ticket_url', 'image_source_url', 'image_url'):
+        value = request.form.get(field, '').strip()
+        parsed = urlsplit(value)
+        local_photo = field == 'image_url' and value.startswith('/static/images/')
+        limit = 255 if field == 'image_url' else 500
+        if value and (len(value) > limit or (not local_photo and (parsed.scheme not in ('http', 'https') or not parsed.hostname))):
+            raise ValueError('Gunakan URL sumber, foto, dan tiket yang valid.')
+        setattr(dest, field, value or None)
+    dest.admission_status = status
+    dest.admission_info = request.form.get('admission_info', '').strip() or None
+    dest.parking_info = request.form.get('parking_info', '').strip() or None
+    if status != 'paid':
+        dest.ticket_url = None
+        for ticket in dest.ticket_types:
+            ticket.is_active = False
+        dest.base_price = 0
+
+
 @app.route('/admin/destinations/create', methods=['POST'])
 @login_required
 @role_required('admin')
@@ -853,9 +872,7 @@ def destination_create():
     code = request.form.get('code', '').strip().upper()
     category = request.form.get('category', 'Wisata Alam').strip()
     location = request.form.get('location', '').strip()
-    base_price = float(request.form.get('base_price', 0))
     description = request.form.get('description', '').strip()
-    image_url = request.form.get('image_url', '').strip()
 
     if not name or not code or not location:
         flash('Nama, Kode, dan Lokasi destinasi wajib diisi.', 'danger')
@@ -870,17 +887,15 @@ def destination_create():
         name=name,
         category=category,
         location=location,
-        base_price=base_price,
         description=description,
-        image_url=image_url or 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80',
         is_active=True
     )
+    try:
+        apply_visit_fields(dest)
+    except ValueError as error:
+        flash(str(error), 'danger')
+        return redirect(url_for('destinations_crud'))
     db.session.add(dest)
-    db.session.commit()
-
-    # Create default adult ticket type
-    tt = TicketType(destination_id=dest.id, name='Tiket Reguler', price=base_price, description='Retribusi umum')
-    db.session.add(tt)
     db.session.commit()
 
     flash(f'Destinasi wisata {name} berhasil ditambahkan!', 'success')
@@ -890,13 +905,17 @@ def destination_create():
 @login_required
 @role_required('admin')
 def destination_edit(id):
-    dest = Destination.query.get_or_404(id)
+    dest = Destination.query.filter_by(id=id).with_for_update().first_or_404()
+    try:
+        apply_visit_fields(dest)
+    except ValueError as error:
+        db.session.rollback()
+        flash(str(error), 'danger')
+        return redirect(url_for('destinations_crud'))
     dest.name = request.form.get('name', dest.name).strip()
     dest.category = request.form.get('category', dest.category).strip()
     dest.location = request.form.get('location', dest.location).strip()
-    dest.base_price = float(request.form.get('base_price', dest.base_price))
     dest.description = request.form.get('description', dest.description).strip()
-    dest.image_url = request.form.get('image_url', dest.image_url).strip()
     dest.is_active = True if request.form.get('is_active') == 'on' else False
 
     db.session.commit()
@@ -934,20 +953,41 @@ def delete_admin_record(record, label, return_to):
 @login_required
 @role_required('admin')
 def ticket_type_create():
-    dest_id = int(request.form.get('destination_id'))
+    dest_id = request.form.get('destination_id', type=int)
     name = request.form.get('name', '').strip()
-    price = float(request.form.get('price', 0))
     description = request.form.get('description', '').strip()
-
-    if not name or price <= 0:
-        flash('Nama Kategori dan Harga Tiket harus diisi dengan benar.', 'danger')
+    try:
+        price = Decimal(request.form.get('price', ''))
+    except InvalidOperation:
+        price = Decimal(0)
+    if not name or not price.is_finite() or not 1 <= price < 10_000_000_000:
+        flash('Nama dan harga tiket harus diisi dengan benar.', 'danger')
         return redirect(url_for('destinations_crud'))
 
-    tt = TicketType(destination_id=dest_id, name=name, price=price, description=description)
-    db.session.add(tt)
+    dest = Destination.query.filter_by(id=dest_id).with_for_update().first_or_404()
+    if dest.admission_status != 'paid' or not dest.is_active:
+        flash('Tarif loket hanya dapat ditambahkan untuk destinasi aktif dan berbayar.', 'warning')
+        return redirect(url_for('destinations_crud'))
+    db.session.add(TicketType(destination=dest, name=name, price=price, description=description))
+    db.session.flush()
+    dest.base_price = min(ticket.price for ticket in dest.available_tickets)
     db.session.commit()
-    flash(f'Jenis Tiket {name} berhasil ditambahkan!', 'success')
+    flash(f'Jenis tiket {name} berhasil ditambahkan!', 'success')
     return redirect(url_for('destinations_crud'))
+
+
+@app.post('/admin/ticket-types/retire/<int:id>')
+@login_required
+@role_required('admin')
+def ticket_type_retire(id):
+    dest = Destination.query.join(TicketType).filter(TicketType.id == id).with_for_update().first_or_404()
+    ticket = db.get_or_404(TicketType, id)
+    ticket.is_active = False
+    dest.base_price = min((item.price for item in dest.available_tickets), default=0)
+    db.session.commit()
+    flash('Tarif loket dinonaktifkan. Riwayat tiket tetap tersimpan.', 'success')
+    return redirect(url_for('destinations_crud'))
+
 
 # ----------------------------
 # HOTELS & PROMOS CRUD
@@ -1231,33 +1271,22 @@ def api_ai_chat():
             name=dest_name,
             category=template['category'],
             location=template['location'],
-            base_price=template['base_price'],
             description=template['description'],
-            image_url=template['image_url'],
             opening_date=target_date,
-            is_active=True
+            is_active=False
         )
         db.session.add(new_dest)
         db.session.flush()
 
-        # Buat tiket default
-        tt = TicketType(
-            destination_id=new_dest.id,
-            name=template['ticket_name'],
-            price=template['base_price'],
-            description=f"Retribusi masuk resmi {new_dest.name}"
-        )
-        db.session.add(tt)
         db.session.commit()
 
         timing_status = "H-1 Hari (Besok Grand Opening!)" if days_diff <= 1 else f"Buka dalam {days_diff} Hari (1 Bulan Lagi)" if days_diff <= 30 else f"Grand Opening {days_diff} Hari ke Depan"
 
         reply_msg = (
-            f"🏖️ **Berhasil Menerbitkan Destinasi Wisata Baru Lamongan!**\n\n"
+            f"🏖️ **Draf Destinasi Wisata Lamongan tersimpan!**\n\n"
             f"🏷️ **Nama Wisata**: {new_dest.name} (Kode: `{new_dest.code}`)\n"
             f"📅 **Tanggal Pembukaan / Grand Opening**: {new_dest.opening_date.strftime('%d %B %Y')} ({timing_status})\n"
             f"📍 **Lokasi**: {new_dest.location}\n"
-            f"💰 **Tarif Tiket Masuk**: Rp {new_dest.base_price:,.0f}\n"
             f"📝 **Deskripsi**: {new_dest.description}\n\n"
         )
         reply_msg += 'Destinasi tersimpan di Kelola Destinasi.'

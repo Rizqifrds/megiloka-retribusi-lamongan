@@ -13,6 +13,27 @@ document.addEventListener('DOMContentLoaded', function () {
         calculateTotalPrice();
     }
 
+    const visitDate = document.getElementById('bookingVisitDate');
+    if (visitDate) {
+        const updateBookingRates = () => {
+            const weekday = (new Date(visitDate.value + 'T00:00:00Z').getUTCDay() + 6) % 7;
+            let hasRates = false;
+            document.querySelectorAll('.ticket-type-row[data-weekdays]').forEach(row => {
+                const offered = Boolean(visitDate.value && (Number(row.dataset.weekdays) & (1 << weekday)));
+                const input = row.querySelector('.ticket-qty-input');
+                row.hidden = !offered;
+                input.disabled = !offered;
+                if (!offered) input.value = '0';
+                hasRates ||= offered;
+            });
+            document.getElementById('noBookingRates').hidden = hasRates;
+            document.getElementById('bookingSubmit').disabled = !hasRates;
+            calculateTotalPrice();
+        };
+        visitDate.addEventListener('change', updateBookingRates);
+        updateBookingRates();
+    }
+
     // Auto dismiss alert notifications after 5s
     const alerts = document.querySelectorAll('.alert-dismissible');
     alerts.forEach(alert => {
@@ -55,7 +76,7 @@ function calculateTotalPrice() {
         const qtyInput = row.querySelector('.ticket-qty-input');
         const subtotalEl = row.querySelector('.subtotal-amount');
 
-        if (qtyInput) {
+        if (qtyInput && !qtyInput.disabled) {
             const qty = parseInt(qtyInput.value) || 0;
             const subtotal = price * qty;
             grandTotal += subtotal;

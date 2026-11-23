@@ -19,7 +19,7 @@
                     <a href="{{ url_for('destinations') }}" class="lamongan-action-primary">Jelajahi Wisata <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
                     <a href="{{ url_for('public_calendar') }}" class="lamongan-action-secondary"><i class="fa-regular fa-calendar" aria-hidden="true"></i> Lihat Agenda</a>
                 </div>
-                <div class="lamongan-hero-note"><i class="fa-solid fa-ticket" aria-hidden="true"></i><span>Temukan destinasi favorit. Pesan tiket lebih mudah.</span></div>
+                <div class="lamongan-hero-note"><i class="fa-solid fa-location-dot" aria-hidden="true"></i><span>Cek lokasi dan informasi sebelum berkunjung.</span></div>
             </div>
             <figure class="lamongan-hero-visual">
                 <img src="{{ url_for('static', filename='images/lamongan-wbl-hero.jpg') }}" alt="Pengunjung menikmati wahana flying fox dengan pemandangan laut di Wisata Bahari Lamongan" width="1080" height="812" fetchpriority="high">
@@ -85,8 +85,8 @@
                     <i class="fa-solid fa-tags me-1"></i>PROMO SEDANG BERLANGSUNG
                 </span>
             </div>
-            <h2 class="fw-bold text-dark mb-1">Wisata Favorit & Promo Berlangsung</h2>
-            <p class="text-muted mb-0">Destinasi wisata daerah yang paling sering dikunjungi dengan promo tiket resmi diskon spesial.</p>
+            <h2 class="fw-bold text-dark mb-1">Jelajahi Wisata Lamongan</h2>
+            <p class="text-muted mb-0">Lokasi, tarif kunjungan, dan informasi parkir destinasi.</p>
         </div>
         <a href="{{ url_for('destinations') }}" class="btn btn-outline-primary rounded-pill fw-semibold">
             Lihat Semua Destinasi ({{ total_dest }}) <i class="fa-solid fa-arrow-right ms-1"></i>
@@ -97,8 +97,8 @@
         {% for dest in destinations %}
         <div class="col-md-6 col-lg-4">
             <div class="card card-megiloka h-100">
-                <div class="dest-img-container">
-                    <img src="{{ dest.image_url }}" alt="{{ dest.name }}" class="dest-img">
+                <div class="dest-img-container position-relative" style="height: 210px;">
+                    {% include 'destination_photo.html' %}
                     
                     <!-- Promo Tag Ribbon -->
                     {% if dest.active_promo %}
@@ -107,20 +107,7 @@
                     </span>
                     {% endif %}
 
-                    <!-- Sering Dikunjungi Badge -->
-                    <span class="popular-badge-top">
-                        <i class="fa-solid fa-chart-line text-warning me-1"></i>Sering Dikunjungi
-                    </span>
-
-                    <!-- Price Badge with Discount Display -->
-                    <div class="price-badge-modern">
-                        {% if dest.active_promo and dest.discounted_price < dest.base_price %}
-                            <del class="text-white-50 small me-1" style="font-size: 0.8rem;">Rp {{ "{:,.0f}".format(dest.base_price) }}</del>
-                            <span class="text-warning fw-bold fs-6">Rp {{ "{:,.0f}".format(dest.discounted_price) }}</span>
-                        {% else %}
-                            <span class="fw-bold">Rp {{ "{:,.0f}".format(dest.base_price) }}</span>
-                        {% endif %}
-                    </div>
+                    {% include 'destination_admission_badge.html' %}
                 </div>
 
                 <div class="card-body p-4 d-flex flex-column">
@@ -128,7 +115,6 @@
                         <span class="badge badge-lamongan-upcoming rounded-pill">
                             <i class="fa-solid fa-tag me-1"></i>{{ dest.category }}
                         </span>
-                        <small class="text-muted"><i class="fa-solid fa-shield-halved text-primary me-1"></i>Tiket QR Resmi</small>
                     </div>
 
                     <h5 class="card-title fw-bold text-dark mb-1">{{ dest.name }}</h5>
@@ -162,11 +148,11 @@
 
                     <div class="d-flex gap-2 mt-auto">
                         <a href="{{ url_for('destination_detail', id=dest.id) }}" class="btn btn-outline-primary btn-sm flex-fill rounded-pill fw-semibold">
-                            Detail Wahana
+                            Info Destinasi
                         </a>
-                        <a href="{{ url_for('booking', destination_id=dest.id) }}" class="btn btn-primary btn-sm flex-fill rounded-pill fw-bold">
-                            <i class="fa-solid fa-ticket me-1"></i>Pesan Tiket Promo
-                        </a>
+                        {% if dest.available_tickets %}<a href="{{ url_for('booking', destination_id=dest.id) }}" class="btn btn-primary btn-sm flex-fill rounded-pill fw-bold">
+                            <i class="fa-solid fa-ticket me-1"></i>Pesan Tiket
+                        </a>{% endif %}
                     </div>
                 </div>
             </div>

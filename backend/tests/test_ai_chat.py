@@ -9,7 +9,7 @@ from config import Config
 # Set before importing app/db; never point these tests at the user's database.
 Config.SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
 from app import app
-from models import db, Destination, Event, Hotel, PADReportRecap, TicketType, Promo, User
+from models import db, Destination, Event, Hotel, PADReportRecap, TicketType, Promo, Ticket, Transaction, User
 
 
 class DateTests(unittest.TestCase):
@@ -56,7 +56,7 @@ class ChatTests(unittest.TestCase):
         self.context = app.app_context()
         self.context.push()
         db.create_all()
-        d = Destination(code='TEST-KTG', name='Pantai Kutang', category='Bahari', location='Labuhan, Brondong', description='Pantai untuk pengujian.', base_price=10000, is_active=True)
+        d = Destination(code='TEST-KTG', name='Pantai Kutang', category='Bahari', location='Labuhan, Brondong', description='Pantai untuk pengujian.', base_price=10000, is_active=True, admission_status='paid')
         db.session.add(d)
         db.session.flush()
         db.session.add_all([
@@ -198,6 +198,66 @@ class ChatTests(unittest.TestCase):
         ticket.price = 17000
         db.session.commit()
         self.assertIn('17.000', self.answer('Berapa harga tiket Pantai Kutang?')['reply'])
+
+    def test_free_destination_is_information_only_even_with_legacy_ticket(self):
+        dest = Destination.query.one()
+        dest.admission_status = 'free'
+        db.session.commit()
+        detail = self.client.get(f'/destinations/{dest.id}').get_data(as_text=True)
+        self.assertIn('Gratis', detail)
+        self.assertNotIn('Pesan E-Ticket', detail)
+        sale = self.client.post(f'/booking/{dest.id}', data={'qty_1': '1'})
+        self.assertEqual(sale.location, f'/destinations/{dest.id}')
+        self.assertIn('gratis', self.answer('Berapa harga tiket Pantai Kutang?')['reply'].lower())
+
+    def test_namira_is_featured_without_a_ticket_button(self):
+        db.session.add(Destination(code='DEST-NMR-01', name='Masjid Namira Lamongan', location='Jotosanur', admission_status='free'))
+        db.session.commit()
+        html = self.client.get('/').get_data(as_text=True)
+        self.assertIn('Masjid Namira Lamongan', html)
+        self.assertIn('Gratis', html)
+
+    def test_reservation_counts_toward_pad_once_cashier_confirms(self):
+        dest = Destination.query.one()
+        ticket_type = TicketType.query.filter_by(name='Dewasa').one()
+        with patch('app.today_wib', return_value=date(2026, 11, 23)):
+            result = self.client.post(f'/booking/{dest.id}', data={
+                'visitor_name': 'Pengunjung Uji', 'visit_date': '2026-11-23', f'qty_{ticket_type.id}': '2',
+            })
+            self.assertIn('/tickets/', result.location)
+            order = Transaction.query.one()
+            self.assertEqual(order.payment_status, 'pending')
+            self.assertEqual(PADReportRecap.query.count(), 0)
+            self.assertNotIn('ticket-qr-container', self.client.get(result.location).get_data(as_text=True))
+            path = f'/pos/reservations/{order.invoice_number}/confirm'
+            self.assertEqual(self.client.post(path).status_code, 302)
+            self.assertEqual(Transaction.query.one().payment_status, 'pending')
+            with self.client.session_transaction() as sess:
+                sess.update(user_id=1, user_role='admin', reservation_csrf='test-token')
+            for _ in range(2):
+                self.assertEqual(self.client.post(path, data={'csrf_token': 'test-token'}).status_code, 302)
+            self.assertEqual(Transaction.query.one().payment_status, 'paid')
+            self.assertEqual(Ticket.query.count(), 2)
+            self.assertEqual(PADReportRecap.query.one().total_revenue, 24000)
+            self.assertEqual(PADReportRecap.query.one().total_tickets_sold, 2)
+            self.assertIn('ticket-qr-container', self.client.get(result.location).get_data(as_text=True))
+
+    def test_retired_ticket_remains_in_database_but_is_not_offered(self):
+        dest = Destination.query.one()
+        old = TicketType.query.filter_by(name='Dewasa').one()
+        old.is_active = False
+        db.session.commit()
+        detail = self.client.get(f'/destinations/{dest.id}').get_data(as_text=True)
+        self.assertNotIn('12.000', detail)
+        self.assertNotIn('12.000', self.answer('Berapa harga tiket Pantai Kutang?')['reply'])
+        self.assertIsNotNone(db.session.get(TicketType, old.id))
+
+    def test_parking_uses_destination_note(self):
+        dest = Destination.query.one()
+        dest.parking_info = 'Tarif parkir motor tercatat Rp2.000.'
+        db.session.commit()
+        result = self.answer('Berapa biaya parkir Pantai Kutang?')
+        self.assertIn('motor tercatat Rp2.000', result['reply'])
 
     def test_promo_does_not_invent_booking_discount(self):
         d = Destination.query.one()

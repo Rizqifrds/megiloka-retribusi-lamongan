@@ -53,7 +53,8 @@ megiloka-retribusi-lamongan/
 │   ├── test_verification.py # Script pengujian otomatis
 │   ├── database/
 │   │   ├── schema.sql       # Script DDL MySQL 8.0
-│   │   └── seed.sql         # Data awal destinasi & user demo
+│   │   ├── seed.sql         # Data awal destinasi & user demo
+│   │   └── destination_catalog.json # Informasi destinasi dan tautan sumber
 │   └── utils/
 │       ├── __init__.py
 │       ├── ai_service.py    # MegiBot AI Concierge & CS
@@ -238,3 +239,17 @@ git push -u origin main
 ## 🛡️ Hak Cipta & Lisensi
 Dikembangkan untuk **Dinas Pariwisata dan Kebudayaan Kabupaten Lamongan**.  
 © 2026 Tim Pengembang MegiLoka.
+
+
+## Katalog destinasi
+
+Untuk memasang revisi katalog pada database proyek yang sudah ada, jalankan
+`python backend/destination_catalog.py` sebelum memulai server versi baru.
+Perintah ini menambahkan kolom informasi kunjungan dan menerapkan katalog bersumber
+berdasarkan kode destinasi. Perubahan admin pada profil destinasi yang cocok akan
+ditimpa saat katalog diterapkan ulang. Riwayat transaksi, tiket, dan rekap PAD tetap tersimpan.
+
+Admin bisa mengatur status masuk, catatan tarif dan parkir, foto, serta tautan
+sumber di Kelola Destinasi. Tiket loket baru dijual melalui MegiLoka setelah admin
+menerbitkan tarif aktif untuk destinasi berbayar. Harga dari katalog operator
+ditampilkan sebagai informasi kunjungan.

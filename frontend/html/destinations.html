@@ -203,7 +203,7 @@
     </div>
     {% else %}
     <div class="d-flex justify-content-between align-items-center mb-3 text-muted small px-1">
-        <span>Menampilkan seluruh <strong>{{ destinations|length }}</strong> destinasi wisata resmi Lamongan</span>
+        <span>Menampilkan seluruh <strong>{{ destinations|length }}</strong> destinasi wisata Lamongan</span>
     </div>
     {% endif %}
 
@@ -213,12 +213,8 @@
             {% for dest in destinations %}
             <div class="col-md-6 col-lg-4">
                 <div class="card card-megiloka h-100 border-0 shadow-sm rounded-4 overflow-hidden">
-                    <div class="dest-img-container position-relative">
-                        <img src="{{ dest.image_url }}" 
-                             alt="{{ dest.name }}" 
-                             class="dest-img w-100" 
-                             style="height: 210px; object-fit: cover;"
-                             onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80';">
+                    <div class="dest-img-container position-relative" style="height: 210px;">
+                        {% include 'destination_photo.html' %}
                         
                         {% if dest.active_promo %}
                         <span class="promo-badge-ribbon" style="font-size:0.7rem; top: 10px; left: 10px;">
@@ -226,14 +222,7 @@
                         </span>
                         {% endif %}
 
-                        <div class="price-badge-modern">
-                            {% if dest.active_promo and dest.discounted_price < dest.base_price %}
-                                <del class="text-white-50 small me-1" style="font-size: 0.75rem;">Rp {{ "{:,.0f}".format(dest.base_price) }}</del>
-                                <span class="text-warning fw-bold fs-6">Rp {{ "{:,.0f}".format(dest.discounted_price) }}</span>
-                            {% else %}
-                                <span class="fw-bold">Mulai Rp {{ "{:,.0f}".format(dest.base_price) }}</span>
-                            {% endif %}
-                        </div>
+                        {% include 'destination_admission_badge.html' %}
                     </div>
                     <div class="card-body d-flex flex-column p-4">
                         <div class="d-flex align-items-center justify-content-between mb-2">
@@ -277,9 +266,9 @@
                             <a href="{{ url_for('destination_detail', id=dest.id) }}" class="btn btn-outline-primary btn-sm flex-fill rounded-pill fw-semibold py-2">
                                 Info Detail
                             </a>
-                            <a href="{{ url_for('booking', destination_id=dest.id) }}" class="btn btn-primary btn-sm flex-fill rounded-pill fw-bold py-2 shadow-sm">
+                            {% if dest.available_tickets %}<a href="{{ url_for('booking', destination_id=dest.id) }}" class="btn btn-primary btn-sm flex-fill rounded-pill fw-bold py-2 shadow-sm">
                                 <i class="fa-solid fa-ticket me-1"></i>Pesan Tiket
-                            </a>
+                            </a>{% endif %}
                         </div>
                     </div>
                 </div>

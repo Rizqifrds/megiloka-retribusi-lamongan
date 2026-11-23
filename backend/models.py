@@ -1,4 +1,5 @@
 from datetime import datetime
+from urllib.parse import urlencode
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -15,6 +16,12 @@ class Destination(db.Model):
     base_price = db.Column(db.Numeric(12, 2), nullable=False, default=0.00)
     description = db.Column(db.Text, nullable=True)
     image_url = db.Column(db.String(255), nullable=True)
+    image_source_url = db.Column(db.String(500), nullable=True)
+    admission_status = db.Column(db.String(12), nullable=False, default='unknown', server_default='unknown')
+    admission_info = db.Column(db.Text, nullable=True)
+    parking_info = db.Column(db.Text, nullable=True)
+    source_url = db.Column(db.String(500), nullable=True)
+    ticket_url = db.Column(db.String(500), nullable=True)
     opening_date = db.Column(db.Date, nullable=True)
     is_active = db.Column(db.Boolean, nullable=False, default=True)
     created_at = db.Column(db.DateTime, default=datetime.now)
@@ -30,8 +37,20 @@ class Destination(db.Model):
     promos = db.relationship('Promo', backref='destination', lazy=True, cascade="all, delete-orphan")
 
     @property
+    def available_tickets(self):
+        if self.admission_status != 'paid':
+            return []
+        return [ticket for ticket in self.ticket_types if ticket.is_active and ticket.price > 0]
+
+    @property
+    def maps_url(self):
+        return 'https://www.google.com/maps/search/?' + urlencode({'api': 1, 'query': f'{self.name}, {self.location}'})
+
+    @property
     def active_promo(self):
         from ai.dates import today_wib
+        if self.admission_status != 'paid':
+            return None
         today = today_wib()
         # Look for direct promos on destination first
         for p in self.promos:
@@ -94,7 +113,12 @@ class TicketType(db.Model):
     name = db.Column(db.String(100), nullable=False)
     price = db.Column(db.Numeric(12, 2), nullable=False)
     description = db.Column(db.String(255), nullable=True)
+    is_active = db.Column(db.Boolean, nullable=False, default=True, server_default='0')
+    weekdays_mask = db.Column(db.Integer, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.now)
+
+    def offered_on(self, day):
+        return self.weekdays_mask is None or bool(self.weekdays_mask & (1 << day.weekday()))
 
 class Transaction(db.Model):
     __tablename__ = 'transactions'

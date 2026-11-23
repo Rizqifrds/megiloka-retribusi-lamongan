@@ -28,6 +28,12 @@ CREATE TABLE `destinations` (
     `base_price` DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
     `description` TEXT,
     `image_url` VARCHAR(255),
+    `image_source_url` VARCHAR(500),
+    `admission_status` VARCHAR(12) NOT NULL DEFAULT 'unknown',
+    `admission_info` TEXT,
+    `parking_info` TEXT,
+    `source_url` VARCHAR(500),
+    `ticket_url` VARCHAR(500),
     `opening_date` DATE NULL,
     `is_active` TINYINT(1) NOT NULL DEFAULT 1,
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -53,6 +59,8 @@ CREATE TABLE `ticket_types` (
     `name` VARCHAR(100) NOT NULL,
     `price` DECIMAL(12, 2) NOT NULL,
     `description` VARCHAR(255),
+    `is_active` BOOLEAN NOT NULL DEFAULT FALSE,
+    `weekdays_mask` INT,
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (`destination_id`) REFERENCES `destinations`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

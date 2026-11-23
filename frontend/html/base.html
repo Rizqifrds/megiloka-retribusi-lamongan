@@ -39,7 +39,7 @@
                 </button>
 
                 <!-- Guest & Visitor Notification Bell -->
-                <div class="dropdown">
+                <div class="dropdown guest-notification-control">
                     <button class="btn btn-outline-light btn-sm position-relative rounded-circle p-2" type="button"
                         id="guestNotifDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="Notifikasi Agenda Lamongan">
                         <i class="fa-solid fa-bell text-warning fs-6"></i>
@@ -47,7 +47,7 @@
                             {{ total_notifications }}
                         </span>
                     </button>
-                    <div class="dropdown-menu dropdown-menu-end shadow-lg p-0 notif-dropdown-menu" style="width: 350px; border-radius: 16px; border: 1px solid var(--border-color); overflow: hidden;">
+                    <div class="dropdown-menu dropdown-menu-end shadow-lg p-0 notif-dropdown-menu">
                         <div class="p-3 bg-primary text-white d-flex justify-content-between align-items-center">
                             <span class="fw-bold"><i class="fa-solid fa-bell me-2"></i>Notifikasi Pengunjung</span>
                             <span id="notifCountHeader" class="badge bg-light text-dark rounded-pill">{{ total_notifications }} Baru</span>

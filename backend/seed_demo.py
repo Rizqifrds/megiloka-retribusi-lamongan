@@ -5,10 +5,11 @@ import secrets
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from sqlalchemy import URL, create_engine, func, select
+from sqlalchemy import MetaData, Table, URL, create_engine, func, select
 
 from ai.dates import today_wib
 from app import app
+from destination_catalog import upgrade_visit_schema
 from models import Destination, Event, Hotel, PADReportRecap, Promo, Ticket, TicketType, Transaction, User, db
 from utils.qr_generator import create_ticket_qr_payload
 
@@ -23,7 +24,10 @@ def copy_sqlite(path):
     try:
         with source.connect() as connection:
             for table in tables:
-                rows = [dict(row) for row in connection.execute(select(table)).mappings()]
+                legacy_table = Table(table.name, MetaData(), autoload_with=connection)
+                fields = [legacy_table.c[column.name] for column in table.columns
+                          if column.name in legacy_table.c]
+                rows = [dict(row) for row in connection.execute(select(*fields)).mappings()]
                 if rows:
                     db.session.execute(table.insert(), rows)
     finally:
@@ -46,14 +50,14 @@ def seed_demo():
     destination = get_or_create(Destination, {
         'name': '[DEMO] Taman Pesisir MegiLoka', 'category': 'Wisata Alam & Edukasi',
         'location': 'Lamongan (lokasi contoh)', 'base_price': 25000,
-        'description': description, 'image_url': photo,
+        'description': description, 'is_active': False,
     }, code='DEMO-MEGILOKA')
     cashier = get_or_create(User, {
         'full_name': 'Kasir Demo', 'role': 'cashier', 'destination_id': destination.id,
         'password_hash': _demo_password_hash(),
     }, username='demo_kasir')
     ticket_type = get_or_create(TicketType, {
-        'price': 25000, 'description': description,
+        'price': 25000, 'description': description, 'is_active': False,
     }, destination_id=destination.id, name='Tiket Reguler Demo')
     transaction = get_or_create(Transaction, {
         'destination_id': destination.id, 'cashier_id': cashier.id, 'visitor_name': 'Pengunjung Demo',
@@ -93,7 +97,7 @@ def main():
     parser.add_argument('--copy-sqlite', type=Path, help='Salin data lama jika database tujuan masih kosong.')
     args = parser.parse_args()
     with app.app_context():
-        db.create_all()
+        upgrade_visit_schema()
         if args.copy_sqlite:
             copy_sqlite(args.copy_sqlite)
         seed_demo()

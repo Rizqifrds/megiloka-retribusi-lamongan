@@ -17,8 +17,14 @@
         <div class="col-lg-7">
             <!-- Large Image banner -->
             <div class="rounded-4 overflow-hidden shadow-sm mb-4" style="height: 380px;">
-                <img src="{{ destination.image_url }}" alt="{{ destination.name }}" class="w-100 h-100 object-fit-cover">
+                {% with dest=destination %}{% include 'destination_photo.html' %}{% endwith %}
             </div>
+
+            {% if destination.image_source_url %}
+            <a class="small d-inline-block mb-3" href="{{ destination.image_source_url }}">
+                {% if 'Makam_Sunan_Drajat_Lamongan.jpg' in destination.image_source_url %}Foto: Pinerineks, CC BY-SA 4.0{% else %}Sumber foto{% endif %}
+            </a>
+            {% endif %}
 
             <span class="badge badge-lamongan-upcoming px-3 py-2 rounded-pill mb-2">
                 <i class="fa-solid fa-layer-group me-1"></i>{{ destination.category }}
@@ -33,13 +39,9 @@
                 {{ destination.description }}
             </p>
 
-            <div class="alert alert-info border-0 shadow-sm rounded-4 d-flex align-items-center">
-                <i class="fa-solid fa-circle-info fs-3 text-primary me-3"></i>
-                <div>
-                    <h6 class="fw-bold mb-1">Informasi Retribusi Daerah</h6>
-                    <p class="small mb-0">Setiap pembelian tiket berkontribusi langsung pada Pendapatan Asli Daerah (PAD) Kabupaten Lamongan untuk pembangunan fasilitas umum.</p>
-                </div>
-            </div>
+            <a class="btn btn-outline-primary rounded-pill" href="{{ destination.maps_url }}">
+                <i class="fa-solid fa-map-location-dot me-2" aria-hidden="true"></i>Buka Google Maps
+            </a>
         </div>
 
         <div class="col-lg-5">
@@ -58,26 +60,39 @@
                 </div>
                 {% endif %}
 
-                <h4 class="fw-bold text-dark mb-2">Daftar Retribusi Tiket</h4>
-                <p class="text-muted small mb-4">Pilih jenis tiket yang sesuai dengan kebutuhan kunjungan Anda.</p>
+                <h2 class="h4 fw-bold mb-3">Informasi kunjungan</h2>
+                <h3 class="h6 fw-bold">Masuk</h3>
+                {% if destination.admission_status == 'free' %}
+                    <p><strong>Gratis.</strong> {{ destination.admission_info or 'Tidak perlu tiket masuk.' }}</p>
+                {% elif destination.admission_info %}
+                    <p>{{ destination.admission_info }}</p>
+                {% elif not destination.available_tickets %}
+                    <p>Tarif masuk belum terverifikasi. Konfirmasi ke pengelola.</p>
+                {% endif %}
+                <h3 class="h6 fw-bold">Parkir</h3>
+                <p>{{ destination.parking_info or 'Tarif parkir belum terverifikasi.' }}</p>
 
-                <div class="list-group list-group-flush mb-4">
-                    {% for tt in ticket_types %}
-                    <div class="list-group-item d-flex justify-content-between align-items-center px-0 py-3">
+                {% if destination.available_tickets %}
+                <h3 class="h6 fw-bold">Tiket loket MegiLoka</h3>
+                <ul class="list-group list-group-flush mb-4">
+                    {% for ticket in destination.available_tickets %}
+                    <li class="list-group-item d-flex justify-content-between gap-3 px-0">
                         <div>
-                            <h6 class="fw-bold mb-0 text-dark">{{ tt.name }}</h6>
-                            <small class="text-muted">{{ tt.description or 'Retribusi resmi daerah' }}</small>
+                            <strong>{{ ticket.name }}</strong>
+                            {% if ticket.description %}<small class="d-block text-muted">{{ ticket.description }}</small>{% endif %}
                         </div>
-                        <span class="fw-bold text-primary fs-5">
-                            Rp {{ "{:,.0f}".format(tt.price) }}
-                        </span>
-                    </div>
+                        <span class="fw-bold text-primary">Rp {{ "{:,.0f}".format(ticket.price).replace(',', '.') }}</span>
+                    </li>
                     {% endfor %}
-                </div>
-
-                <a href="{{ url_for('booking', destination_id=destination.id) }}" class="btn btn-primary btn-lg w-100 rounded-pill fw-bold shadow">
-                    <i class="fa-solid fa-ticket me-2"></i>Pesan E-Ticket Sekarang
-                </a>
+                </ul>
+                <a href="{{ url_for('booking', destination_id=destination.id) }}" class="btn btn-primary w-100 rounded-pill mb-2">Pesan E-Ticket</a>
+                {% endif %}
+                {% if destination.admission_status == 'paid' and not destination.available_tickets %}
+                <p class="small text-muted">Pemesanan MegiLoka belum dibuka untuk destinasi ini.</p>
+                {% endif %}
+                {% if destination.source_url %}
+                <a class="small" href="{{ destination.source_url }}">Sumber informasi destinasi</a>
+                {% endif %}
             </div>
         </div>
     </div>
