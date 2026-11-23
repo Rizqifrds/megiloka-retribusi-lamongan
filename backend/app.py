@@ -30,9 +30,10 @@ from destination_catalog import catalog_by_code, seed_booking_rates, upgrade_vis
 from models import db, Destination, User, TicketType, Transaction, Ticket, PADReportRecap, Hotel, Promo, Event
 from utils.qr_generator import create_ticket_qr_payload, verify_qr_payload, generate_qr_image_base64
 from utils.holiday_feed import HolidayFeed
+from utils.pad_reporting import pad_rows
 from utils.whatsapp_agenda import init_whatsapp
 from utils.lamongan_calendar import POSTER_PAGE, POSTER_YEAR, poster_events, poster_months, upcoming_poster_events
-from ai.dates import today_wib
+from ai.dates import WIB, today_wib
 from ai.concierge import answer_question
 from ai.intent_model import ModelUnavailable
 from utils.ai_service import (
@@ -436,12 +437,14 @@ def record_pad_sale(destination_id, report_date, ticket_count, amount):
 @app.route('/tickets/<invoice_number>')
 def ticket_view(invoice_number):
     transaction = Transaction.query.filter_by(invoice_number=invoice_number).first_or_404()
-    tickets = transaction.tickets if transaction.payment_status == 'paid' else []
+    tickets = sorted(transaction.tickets, key=lambda ticket: ticket.id) if transaction.payment_status == 'paid' else []
 
     # Generate Base64 QR Code images for inline display
     ticket_data_list = []
     for t in tickets:
-        qr_b64 = generate_qr_image_base64(t.qr_hash)
+        payload, _ = create_ticket_qr_payload(t.ticket_code, transaction.destination_id,
+                                              t.valid_for_date.isoformat(), app.config['SECRET_KEY'])
+        qr_b64 = generate_qr_image_base64(payload)
         ticket_data_list.append({
             'ticket': t,
             'qr_b64': qr_b64
@@ -503,6 +506,7 @@ def pos():
             visitor_name=visitor_name, visitor_phone=visitor_phone,
             total_amount=sum(ticket.price * qty for ticket, qty in ticket_items),
             payment_method=payment_method, payment_status='paid',
+            paid_at=datetime.now(WIB).replace(tzinfo=None),
         )
         db.session.add(trans)
         add_order_tickets(trans, dest, today, ticket_items)
@@ -512,16 +516,17 @@ def pos():
         return redirect(url_for('ticket_view', invoice_number=invoice_num))
 
     invoice = request.args.get('invoice', '').strip().upper()
-    reservation = None
-    if invoice:
-        query = Transaction.query.filter_by(invoice_number=invoice, payment_method='cash', payment_status='pending')
-        if session['user_role'] == 'cashier':
-            query = query.filter_by(destination_id=session.get('user_destination_id'))
-        reservation = query.first()
+    pending = Transaction.query.filter_by(payment_method='cash', payment_status='pending')
+    if session['user_role'] == 'cashier':
+        pending = pending.filter_by(destination_id=session.get('user_destination_id'))
+    reservation = pending.filter_by(invoice_number=invoice).first() if invoice else None
+    pending_reservations = pending.filter(Transaction.tickets.any(Ticket.valid_for_date >= today)).order_by(
+        Transaction.transaction_time.desc(), Transaction.id.desc(),
+    ).limit(10).all()
     if reservation and 'reservation_csrf' not in session:
         session['reservation_csrf'] = secrets.token_urlsafe(24)
     return render_template('pos.html', destinations=destinations, selected_dest=selected_dest, ticket_types=ticket_types,
-                           invoice=invoice, reservation=reservation)
+                           invoice=invoice, reservation=reservation, pending_reservations=pending_reservations)
 
 
 @app.post('/pos/reservations/<invoice_number>/confirm')
@@ -553,6 +558,7 @@ def confirm_reservation(invoice_number):
 
     order.payment_status = 'paid'
     order.cashier_id = staff.id
+    order.paid_at = datetime.combine(today, datetime.now(WIB).time())
     record_pad_sale(dest.id, today, len(order.tickets), order.total_amount)
     db.session.commit()
     flash('Pembayaran diterima dan tercatat di PAD.', 'success')
@@ -569,12 +575,19 @@ def validator():
 
 @app.route('/api/validate-qr', methods=['POST'])
 @login_required
+@role_required('admin', 'gate_keeper', 'cashier')
 def api_validate_qr():
-    data = request.json or {}
-    qr_payload = data.get('qr_payload', '').strip()
+    data = request.get_json(silent=True)
+    qr_payload = data.get('qr_payload') if isinstance(data, dict) else None
 
-    if not qr_payload:
-        return jsonify({'success': False, 'message': 'Payload QR Code kosong.'}), 400
+    if not isinstance(qr_payload, str) or not qr_payload.strip() or len(qr_payload) > 512:
+        return jsonify(success=False, message='Masukkan QR atau kode tiket yang tercetak.'), 400
+    qr_payload = qr_payload.strip()
+    if qr_payload.upper().startswith('INV-'):
+        return jsonify(success=False, message='Gunakan nomor reservasi untuk pembayaran di POS. Untuk masuk, pindai QR atau masukkan kode MGLK- pada tiap tiket.',
+                       status_code='RESERVATION_CODE')
+    if '|' not in qr_payload:
+        qr_payload = qr_payload.upper()
 
     is_valid, t_code, dest_id, valid_date_str, err_msg = verify_qr_payload(qr_payload, app.config['SECRET_KEY'])
 
@@ -586,6 +599,8 @@ def api_validate_qr():
     if not ticket:
         return jsonify({'success': False, 'message': f'Kode Tiket {t_code} tidak ditemukan dalam database.', 'status_code': 'NOT_FOUND'}), 200
 
+    if dest_id is not None and (dest_id != str(ticket.transaction.destination_id) or valid_date_str != ticket.valid_for_date.isoformat()):
+        return jsonify(success=False, message='Data QR berbeda dari tiket yang tercatat.', status_code='INVALID_TICKET')
     if ticket.transaction.payment_status != 'paid':
         return jsonify(success=False, message='Pembayaran reservasi belum dikonfirmasi.', status_code='UNPAID'), 200
 
@@ -606,8 +621,9 @@ def api_validate_qr():
 
     if ticket.status in ['expired', 'cancelled']:
         return jsonify({'success': False, 'message': f'Tiket ini sudah tidak berlaku (Status: {ticket.status.upper()}).', 'status_code': 'EXPIRED'}), 200
-    if ticket.transaction.invoice_number.startswith('INV-RSV-') and ticket.valid_for_date != today_wib():
-        return jsonify(success=False, message='Tiket berlaku pada tanggal kunjungan yang tertera.', status_code='VISIT_DATE'), 200
+    if ticket.valid_for_date != today_wib():
+        return jsonify(success=False, message=f'Tiket berlaku pada {ticket.valid_for_date:%d/%m/%Y}.',
+                       status_code='VISIT_DATE'), 200
 
     scanned_at = datetime.now()
     updated = Ticket.query.filter_by(id=ticket.id, status='valid').update({
@@ -642,152 +658,82 @@ def api_validate_qr():
 @login_required
 @role_required('admin')
 def admin_dashboard():
-    total_destinations = Destination.query.count()
-    total_transactions = Transaction.query.count()
-    
-    # Revenue Calculations
-    today_date = date.today()
-    today_revenue_res = db.session.query(db.func.sum(PADReportRecap.total_revenue)).filter(PADReportRecap.report_date == today_date).scalar()
-    today_revenue = float(today_revenue_res) if today_revenue_res else 0.0
+    today = today_wib()
+    rows = pad_rows()
+    month_start = today.replace(day=1)
+    last_7_days = [today - timedelta(days=i) for i in range(6, -1, -1)]
+    revenue_by_day = {}
+    revenue_by_destination = {}
+    for row in rows:
+        day = row.report_date
+        revenue_by_day[day] = revenue_by_day.get(day, 0) + row.total_revenue
+        name = row.destination_name
+        revenue_by_destination[name] = revenue_by_destination.get(name, 0) + row.total_revenue
 
-    total_revenue_res = db.session.query(db.func.sum(PADReportRecap.total_revenue)).scalar()
-    total_revenue = float(total_revenue_res) if total_revenue_res else 0.0
-
-    total_tickets_res = db.session.query(db.func.sum(PADReportRecap.total_tickets_sold)).scalar()
-    total_tickets_sold = int(total_tickets_res) if total_tickets_res else 0
-
-    # Chart Data: Revenue per Destination
-    dest_revenues = db.session.query(
-        Destination.name,
-        db.func.sum(PADReportRecap.total_revenue).label('revenue'),
-        db.func.sum(PADReportRecap.total_tickets_sold).label('tickets')
-    ).join(PADReportRecap, Destination.id == PADReportRecap.destination_id)\
-     .group_by(Destination.name).all()
-
-    chart_labels = [r[0] for r in dest_revenues]
-    chart_revenue_data = [float(r[1] or 0) for r in dest_revenues]
-    chart_ticket_data = [int(r[2] or 0) for r in dest_revenues]
-
-    # Daily Trend (Last 7 days)
-    last_7_days = [today_date - timedelta(days=i) for i in range(6, -1, -1)]
-    trend_labels = [d.strftime('%d %b') for d in last_7_days]
-    trend_revenue = []
-
-    for d in last_7_days:
-        rev = db.session.query(db.func.sum(PADReportRecap.total_revenue)).filter(PADReportRecap.report_date == d).scalar()
-        trend_revenue.append(float(rev) if rev else 0.0)
-
-    recent_transactions = Transaction.query.order_by(Transaction.transaction_time.desc()).limit(8).all()
-
-    # 1-Month Revenue and AI Insights
-    this_month_start = today_date.replace(day=1)
-    this_month_revenue_res = db.session.query(db.func.sum(PADReportRecap.total_revenue)).filter(PADReportRecap.report_date >= this_month_start).scalar()
-    this_month_revenue = float(this_month_revenue_res) if this_month_revenue_res else 0.0
-
-    last_month_end = this_month_start - timedelta(days=1)
-    # Handle January case where previous month is December of previous year
-    last_month_start = last_month_end.replace(day=1)
-    
-    last_month_revenue_res = db.session.query(db.func.sum(PADReportRecap.total_revenue)).filter(
-        PADReportRecap.report_date >= last_month_start, PADReportRecap.report_date <= last_month_end
-    ).scalar()
-    last_month_revenue = float(last_month_revenue_res) if last_month_revenue_res else 0.0
-
-    ai_insight = "Pendapatan bulan ini berjalan stabil."
-    if last_month_revenue > 0:
-        growth = ((this_month_revenue - last_month_revenue) / last_month_revenue) * 100
-        if growth > 15:
-            ai_insight = f"🌟 Prediksi AI: Lonjakan PAD! Pendapatan bulan ini naik {growth:.1f}% dibandingkan bulan lalu. Cek kalender event terdekat yang mungkin memicu lonjakan ini."
-        elif growth < -15:
-            ai_insight = f"⚠️ Peringatan AI: Anomali PAD! Pendapatan turun {abs(growth):.1f}% dari bulan lalu. Pertimbangkan untuk menambah Promo Hotel atau Event."
-
+    recent_transactions = Transaction.query.order_by(Transaction.transaction_time.desc(), Transaction.id.desc()).limit(8).all()
+    pending_count = Transaction.query.filter_by(payment_status='pending').count()
     return render_template(
         'admin/dashboard.html',
-        total_destinations=total_destinations,
-        total_transactions=total_transactions,
-        today_revenue=today_revenue,
-        total_revenue=total_revenue,
-        this_month_revenue=this_month_revenue,
-        ai_insight=ai_insight,
-        total_tickets_sold=total_tickets_sold,
-        chart_labels=chart_labels,
-        chart_revenue_data=chart_revenue_data,
-        chart_ticket_data=chart_ticket_data,
-        trend_labels=trend_labels,
-        trend_revenue=trend_revenue,
-        recent_transactions=recent_transactions
+        today_revenue=revenue_by_day.get(today, 0),
+        total_revenue=sum(revenue_by_day.values()),
+        this_month_revenue=sum(revenue for day, revenue in revenue_by_day.items() if month_start <= day <= today),
+        total_tickets_sold=sum(row.total_tickets_sold for row in rows),
+        chart_labels=list(revenue_by_destination),
+        chart_revenue_data=[float(amount) for amount in revenue_by_destination.values()],
+        trend_labels=[day.strftime('%d %b') for day in last_7_days],
+        trend_revenue=[float(revenue_by_day.get(day, 0)) for day in last_7_days],
+        recent_transactions=recent_transactions,
+        pending_count=pending_count,
     )
+
+
+def pad_filters():
+    try:
+        start = request.args.get('start_date', '').strip()
+        end = request.args.get('end_date', '').strip()
+        return date.fromisoformat(start) if start else None, date.fromisoformat(end) if end else None
+    except ValueError:
+        abort(400, 'Gunakan tanggal dalam format YYYY-MM-DD.')
+
 
 @app.route('/admin/pad-reports')
 @login_required
 @role_required('admin')
 def pad_reports():
-    start_date_str = request.args.get('start_date', '').strip()
-    end_date_str = request.args.get('end_date', '').strip()
+    start, end = pad_filters()
     dest_id = request.args.get('dest_id', type=int)
-
-    query = PADReportRecap.query.join(Destination)
-
-    if start_date_str:
-        s_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
-        query = query.filter(PADReportRecap.report_date >= s_date)
-    if end_date_str:
-        e_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
-        query = query.filter(PADReportRecap.report_date <= e_date)
-    if dest_id:
-        query = query.filter(PADReportRecap.destination_id == dest_id)
-
-    recaps = query.order_by(PADReportRecap.report_date.desc(), Destination.name.asc()).all()
-    destinations = Destination.query.all()
-
-    total_tickets = sum(r.total_tickets_sold for r in recaps)
-    total_pad_revenue = sum(float(r.total_revenue) for r in recaps)
-
-    # Yearly breakdown data per destination
-    current_year = date.today().year
-    all_year_recaps = PADReportRecap.query.filter(
-        PADReportRecap.report_date >= date(current_year, 1, 1),
-        PADReportRecap.report_date <= date(current_year, 12, 31)
-    ).all()
-    
+    recaps = pad_rows(start, end, dest_id)
+    current_year = today_wib().year
     yearly_breakdown = {}
-    for r in all_year_recaps:
-        d_name = r.destination.name
-        if d_name not in yearly_breakdown:
-            yearly_breakdown[d_name] = [0] * 12
-        m = r.report_date.month
-        yearly_breakdown[d_name][m-1] += float(r.total_revenue)
+    for row in pad_rows(date(current_year, 1, 1), date(current_year, 12, 31), dest_id):
+        monthly = yearly_breakdown.setdefault(row.destination_name, [0] * 12)
+        monthly[row.report_date.month - 1] += float(row.total_revenue)
 
     return render_template(
         'admin/pad_reports.html',
         recaps=recaps,
-        destinations=destinations,
-        start_date=start_date_str,
-        end_date=end_date_str,
+        destinations=Destination.query.all(),
+        start_date=start.isoformat() if start else '',
+        end_date=end.isoformat() if end else '',
         selected_dest_id=dest_id,
-        total_tickets=total_tickets,
-        total_pad_revenue=total_pad_revenue,
+        total_tickets=sum(row.total_tickets_sold for row in recaps),
+        total_pad_revenue=sum(row.total_revenue for row in recaps),
         yearly_breakdown=yearly_breakdown,
-        current_year=current_year
+        current_year=current_year,
     )
+
 
 @app.route('/admin/export-pad-csv')
 @login_required
 @role_required('admin')
 def export_pad_csv():
-    recaps = PADReportRecap.query.join(Destination).order_by(PADReportRecap.report_date.desc()).all()
-
-    output = []
-    output.append(['ID Recap', 'Tanggal Laporan', 'Kode Destinasi', 'Nama Objek Wisata', 'Total Tiket Terjual', 'Total Pendapatan (PAD Rp)'])
-
-    for r in recaps:
+    start, end = pad_filters()
+    recaps = pad_rows(start, end, request.args.get('dest_id', type=int))
+    output = [['Tanggal Pembayaran', 'Kode Destinasi', 'Nama Objek Wisata', 'Total Tiket Terjual', 'Total Pendapatan (PAD Rp)']]
+    for row in recaps:
         output.append([
-            r.id,
-            r.report_date.strftime('%Y-%m-%d'),
-            r.destination.code,
-            r.destination.name,
-            r.total_tickets_sold,
-            float(r.total_revenue)
+            row.report_date.isoformat(), row.destination_code, row.destination_name,
+            row.total_tickets_sold, row.total_revenue,
         ])
 
     si = io.StringIO()

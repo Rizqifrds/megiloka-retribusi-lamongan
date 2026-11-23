@@ -79,13 +79,12 @@
         </div>
     </div>
 
-    <!-- AI Insights Banner -->
-    <div class="alert alert-info shadow-sm border-0 rounded-4 d-flex align-items-center mb-4">
-        <div class="me-3 fs-3">🤖</div>
+    <div class="alert alert-info rounded-4 d-flex flex-wrap gap-3 align-items-center justify-content-between mb-4">
         <div>
-            <h6 class="fw-bold mb-1">MegiLoka AI Insights</h6>
-            <p class="mb-0">{{ ai_insight }}</p>
+            <h6 class="fw-bold mb-1">{{ pending_count }} reservasi menunggu pembayaran</h6>
+            <p class="mb-0">PAD dihitung dari pembayaran yang sudah tercatat. Tanggal laporan mengikuti waktu pembayaran (WIB).</p>
         </div>
+        <a href="{{ url_for('pos', _anchor='reservation-payment-title') }}" class="btn btn-outline-primary rounded-pill">Buka POS</a>
     </div>
 
     <!-- Charts Row -->
@@ -123,6 +122,7 @@
                         <th>Destinasi</th>
                         <th>Nama Pengunjung</th>
                         <th>Metode</th>
+                        <th>Status</th>
                         <th>Total Retribusi</th>
                         <th>Waktu Transaksi</th>
                         <th>Aksi</th>
@@ -137,12 +137,15 @@
                         <td>
                             <span class="badge bg-light text-dark border">{{ t.payment_method.upper() }}</span>
                         </td>
+                        <td>{{ {'paid': 'Lunas', 'pending': 'Menunggu pembayaran', 'cancelled': 'Dibatalkan'}[t.payment_status] }}</td>
                         <td class="fw-bold text-success">Rp {{ "{:,.0f}".format(t.total_amount) }}</td>
                         <td class="small text-muted">{{ t.transaction_time.strftime('%d-%m-%Y %H:%M') }}</td>
                         <td>
-                            <a href="{{ url_for('ticket_view', invoice_number=t.invoice_number) }}" class="btn btn-sm btn-outline-primary rounded-pill">
-                                <i class="fa-solid fa-eye me-1"></i>Tiket
-                            </a>
+                            {% if t.payment_status == 'pending' %}
+                            <a href="{{ url_for('pos', invoice=t.invoice_number, _anchor='reservation-payment-title') }}" class="btn btn-sm btn-outline-primary rounded-pill">Buka reservasi di POS</a>
+                            {% else %}
+                            <a href="{{ url_for('ticket_view', invoice_number=t.invoice_number) }}" class="btn btn-sm btn-outline-primary rounded-pill">Lihat tiket</a>
+                            {% endif %}
                         </td>
                     </tr>
                     {% endfor %}

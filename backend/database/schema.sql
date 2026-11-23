@@ -77,6 +77,7 @@ CREATE TABLE `transactions` (
     `payment_method` ENUM('cash', 'qris', 'transfer') NOT NULL DEFAULT 'cash',
     `payment_status` ENUM('paid', 'pending', 'cancelled') NOT NULL DEFAULT 'paid',
     `transaction_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `paid_at` DATETIME,
     FOREIGN KEY (`destination_id`) REFERENCES `destinations`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`cashier_id`) REFERENCES `users`(`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

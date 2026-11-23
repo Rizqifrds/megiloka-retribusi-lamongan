@@ -525,6 +525,15 @@ footer {
         page-break-inside: avoid;
         margin-bottom: 20px;
     }
+
+    .print-ticket-list {
+        display: block;
+    }
+
+    .print-ticket-item {
+        width: 100%;
+        break-inside: avoid;
+    }
 }
 
 /* =========================================================

@@ -9,7 +9,7 @@
             <h2 class="fw-bold text-dark mb-1"><i class="fa-solid fa-file-invoice-dollar text-success me-2"></i>Laporan Rekapitulasi PAD Terpusat</h2>
             <p class="text-muted mb-0">Rekap harian pendapatan retribusi objek wisata daerah untuk pengawasan Dinas Pariwisata.</p>
         </div>
-        <a href="{{ url_for('export_pad_csv') }}" class="btn btn-success rounded-pill fw-bold">
+        <a href="{{ url_for('export_pad_csv', start_date=start_date or None, end_date=end_date or None, dest_id=selected_dest_id) }}" class="btn btn-success rounded-pill fw-bold">
             <i class="fa-solid fa-file-csv me-1"></i>Unduh Laporan CSV
         </a>
     </div>
@@ -134,12 +134,11 @@
             <table class="table table-hover align-middle">
                 <thead class="table-light">
                     <tr>
-                        <th>Tanggal Laporan</th>
+                        <th>Tanggal Pembayaran (WIB)</th>
                         <th>Kode</th>
                         <th>Objek Wisata</th>
                         <th class="text-center">Tiket Terjual</th>
                         <th class="text-end">Total Revenue (PAD Rp)</th>
-                        <th>Status Waktu</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -147,16 +146,15 @@
                         {% for r in recaps %}
                         <tr>
                             <td class="fw-semibold text-dark">{{ r.report_date.strftime('%d-%m-%Y') }}</td>
-                            <td><span class="badge bg-light text-primary border font-monospace">{{ r.destination.code }}</span></td>
-                            <td class="fw-bold text-dark">{{ r.destination.name }}</td>
+                            <td><span class="badge bg-light text-primary border font-monospace">{{ r.destination_code }}</span></td>
+                            <td class="fw-bold text-dark">{{ r.destination_name }}</td>
                             <td class="text-center font-monospace fw-semibold">{{ r.total_tickets_sold }}</td>
                             <td class="text-end fw-bold text-success">Rp {{ "{:,.0f}".format(r.total_revenue) }}</td>
-                            <td class="small text-muted">{{ r.created_at.strftime('%H:%M:%S') }}</td>
                         </tr>
                         {% endfor %}
                     {% else %}
                         <tr>
-                            <td colspan="6" class="text-center py-4 text-muted">Belum ada data laporan rekapitulasi PAD untuk kriteria ini.</td>
+                            <td colspan="5" class="text-center py-4 text-muted">Belum ada pembayaran untuk kriteria ini.</td>
                         </tr>
                     {% endif %}
                 </tbody>

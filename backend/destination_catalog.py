@@ -5,7 +5,7 @@ from pathlib import Path
 from sqlalchemy import inspect
 from sqlalchemy.schema import CreateColumn
 
-from models import Destination, TicketType, db
+from models import Destination, TicketType, Transaction, db
 
 CATALOG_PATH = Path(__file__).resolve().parent / 'database' / 'destination_catalog.json'
 VISIT_FIELDS = (
@@ -34,7 +34,8 @@ def upgrade_visit_schema():
     db.create_all()
     with db.engine.begin() as connection:
         inspector = inspect(connection)
-        for model, fields in ((Destination, VISIT_FIELDS), (TicketType, ('is_active', 'weekdays_mask'))):
+        for model, fields in ((Destination, VISIT_FIELDS), (TicketType, ('is_active', 'weekdays_mask')),
+                              (Transaction, ('paid_at',))):
             table = model.__table__
             existing = {column['name'] for column in inspector.get_columns(table.name)}
             for field in fields:

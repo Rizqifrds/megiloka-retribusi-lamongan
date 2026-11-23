@@ -262,6 +262,44 @@ class ChatTests(unittest.TestCase):
         self.assertEqual(PADReportRecap.query.one().total_revenue, 30000)
         self.assertEqual(self.client.get(response.location).get_data(as_text=True).count('ticket-qr-container'), 3)
 
+    def test_fifty_ticket_reservation_shares_one_payment_and_exports_on_paid_date(self):
+        from utils.pad_reporting import pad_rows
+
+        dest = Destination.query.one()
+        ticket_type = TicketType.query.filter_by(name='Dewasa').one()
+        db.session.add(PADReportRecap(destination_id=dest.id, report_date=date(2026, 11, 23),
+                                     total_tickets_sold=999, total_revenue=1_000_000))
+        db.session.commit()
+        with patch('app.today_wib', return_value=date(2026, 11, 23)):
+            booking = self.client.post(f'/booking/{dest.id}', data={
+                'visitor_name': 'Rombongan Uji', 'visit_date': '2026-11-24', f'qty_{ticket_type.id}': '50',
+            })
+        order = Transaction.query.one()
+        self.assertEqual(len(order.tickets), 50)
+        self.assertEqual(pad_rows(), [])
+        with self.client.session_transaction() as sess:
+            sess.update(user_id=1, user_role='admin', reservation_csrf='test-token')
+        with patch('app.today_wib', return_value=date(2026, 11, 24)):
+            self.assertIn('50 tiket', self.client.get('/pos').get_data(as_text=True))
+            invoice = order.invoice_number
+            path = f'/pos/reservations/{invoice}/confirm'
+            for _ in range(2):
+                self.assertEqual(self.client.post(path, data={'csrf_token': 'test-token'}).status_code, 302)
+            html = self.client.get(booking.location).get_data(as_text=True)
+            self.assertEqual(html.count('ticket-qr-container'), 50)
+            self.assertIn('Tiket 50 dari 50', html)
+            self.assertEqual(len({ticket.ticket_code for ticket in order.tickets}), 50)
+            for code, expected in [(invoice, 'RESERVATION_CODE'), (order.tickets[0].ticket_code, 'SUCCESS'),
+                                   (order.tickets[0].qr_hash, 'ALREADY_USED'), (order.tickets[-1].qr_hash, 'SUCCESS')]:
+                scan = self.client.post('/api/validate-qr', json={'qr_payload': code})
+                self.assertEqual(scan.get_json()['status_code'], expected)
+            row, = pad_rows()
+            self.assertEqual((row.report_date, row.total_tickets_sold, row.total_revenue),
+                             (date(2026, 11, 24), 50, 600_000))
+            self.assertIn('600,000', self.client.get('/admin/pad-reports').get_data(as_text=True))
+            csv = self.client.get('/admin/export-pad-csv?start_date=2026-11-24').get_data(as_text=True)
+            self.assertIn('2026-11-24,TEST-KTG,Pantai Kutang,50,600000.00', csv)
+
     def test_retired_ticket_remains_in_database_but_is_not_offered(self):
         dest = Destination.query.one()
         old = TicketType.query.filter_by(name='Dewasa').one()

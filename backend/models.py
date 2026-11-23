@@ -133,6 +133,7 @@ class Transaction(db.Model):
     payment_method = db.Column(db.Enum('cash', 'qris', 'transfer', name='payment_methods'), nullable=False, default='cash')
     payment_status = db.Column(db.Enum('paid', 'pending', 'cancelled', name='payment_statuses'), nullable=False, default='paid')
     transaction_time = db.Column(db.DateTime, default=datetime.now)
+    paid_at = db.Column(db.DateTime, nullable=True)
 
     # Relationships
     tickets = db.relationship('Ticket', backref='transaction', lazy=True, cascade="all, delete-orphan")
