@@ -1,5 +1,29 @@
 [
   {
+    "text": "Agenda resmi esok",
+    "intent": "event_schedule"
+  },
+  {
+    "text": "Acara pekan ini",
+    "intent": "event_schedule"
+  },
+  {
+    "text": "Besok ada kegiatan apa di Kabupaten Lamongan?",
+    "intent": "event_schedule"
+  },
+  {
+    "text": "Tampilkan acara kalender resmi Lamongan bulan ini",
+    "intent": "event_schedule"
+  },
+  {
+    "text": "Apa jadwal wisata pekan depan?",
+    "intent": "event_schedule"
+  },
+  {
+    "text": "Adakah agenda budaya esok hari?",
+    "intent": "event_schedule"
+  },
+  {
     "text": "Event apa saja besok?",
     "intent": "event_schedule"
   },

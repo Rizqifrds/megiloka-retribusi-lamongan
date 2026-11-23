@@ -227,17 +227,8 @@ async function sendAiRequest(payload) {
             appendChatMessage(data.reply, 'bot', data.sources);
         }
 
-        // If an item was added, refresh notifications & spotlight section
         if (data.action_executed === 'add_event' || data.action_executed === 'add_destination') {
             playBeepSound('success');
-            await refreshGuestNotifications();
-
-            // Reload page if on home so spotlight section displays immediately
-            if (window.location.pathname === '/' || window.location.pathname === '') {
-                setTimeout(() => {
-                    window.location.reload();
-                }, 2200);
-            }
         }
     } catch (err) {
         typingBubble.remove();
@@ -246,56 +237,5 @@ async function sendAiRequest(payload) {
     } finally {
         megiRequestPending = false;
         if (sendBtn) sendBtn.disabled = false;
-    }
-}
-
-async function refreshGuestNotifications() {
-    try {
-        const res = await fetch('/api/guest/notifications');
-        const data = await res.json();
-        if (!data.success) return;
-
-        const countBadge = document.getElementById('notifBadgeCount');
-        const countHeader = document.getElementById('notifCountHeader');
-        const toastCountBadge = document.getElementById('toastCountBadge');
-        const toastBodyText = document.getElementById('toastBodyText');
-        const container = document.getElementById('notifListContainer');
-
-        if (countBadge) {
-            countBadge.textContent = data.total;
-            if (data.total > 0) {
-                countBadge.classList.remove('d-none');
-            }
-        }
-        if (countHeader) {
-            countHeader.textContent = `${data.total} Baru`;
-        }
-        if (toastCountBadge) {
-            toastCountBadge.textContent = `${data.total} Agenda`;
-        }
-        if (toastBodyText) {
-            toastBodyText.innerHTML = `Ada <strong>${data.total} agenda wisata/destinasi</strong> yang akan berlangsung <strong>besok (H-1)</strong> atau dalam <strong>1 bulan ke depan</strong>!`;
-        }
-
-        if (container && data.notifications.length > 0) {
-            let html = '';
-            data.notifications.forEach(n => {
-                html += `
-                    <a href="${n.url}" class="dropdown-item p-2 mb-1 rounded-3 text-wrap border-bottom text-decoration-none ${n.is_urgent ? 'bg-warning-subtle border-warning-subtle' : 'bg-light'}">
-                        <div class="d-flex align-items-center justify-content-between mb-1">
-                            <span class="badge ${n.badge_class} rounded-pill font-monospace" style="font-size: 0.7rem;">${n.badge_label}</span>
-                            <small class="text-muted" style="font-size: 0.7rem;">${n.timing_desc}</small>
-                        </div>
-                        <div class="fw-bold text-dark small mb-1">${n.title}</div>
-                        <div class="text-muted" style="font-size: 0.72rem;">
-                            <i class="fa-solid fa-location-dot me-1 text-primary"></i>${n.location} • ${n.date_str}
-                        </div>
-                    </a>
-                `;
-            });
-            container.innerHTML = html;
-        }
-    } catch (e) {
-        console.error('Failed refreshing guest notifications:', e);
     }
 }

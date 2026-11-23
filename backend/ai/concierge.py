@@ -1,17 +1,22 @@
-"""A trained intent router with deterministic, read-only database retrieval."""
+"""A trained intent router with read-only calendar and database retrieval."""
+from datetime import date
 import re
 
 from models import Destination, Event, Promo
 from ai.dates import MONTH_LOOKUP, format_date, parse_period, today_wib
 from ai.intent_model import predict_intent
+from utils.lamongan_calendar import POSTER_YEAR, poster_events
 
 PROVENANCE = '\n\nSumber: data aplikasi MegiLoka. Jadwal/data awal belum diverifikasi ke penyelenggara; konfirmasi sebelum berkunjung.'
+OFFICIAL_SOURCE = f'Kalender resmi Lamongan {POSTER_YEAR}'
+OFFICIAL_CALENDAR_URL = '/calendar#poster-calendar-title'
 HELP = ('Saya membantu informasi wisata Lamongan: jadwal dan detail event, lokasi destinasi, harga tiket, serta cara pemesanan. '
         'Coba “Event apa saja besok?”, “Kapan Festival Kupatan?”, atau “Berapa harga tiket Pantai Kutang?”.')
 # Remove query grammar, but keep identifying words: unknown names must not match
 # merely because they contain generic terms such as "Festival" or "Lamongan".
 STOP = set('''apa apakah adakah saja ada yang akan untuk dan atau di ke dari pada dengan dalam masih saya tolong tampilkan tunjukkan daftar cari carikan lihat informasi informasikan info tentang ceritakan jelaskan ingin tahu mau bisa boleh ya dong itu ini tersebut wisata pariwisata destinasi tempat objek lokasi alamat lengkap letak letaknya daerah mana dimana terletak bagaimana kegiatan event acara agenda kalender jadwal festival akbar lamongan kapan tanggal pelaksanaan dilaksanakan dilangsungkan diselenggarakan diselenggarakannya berlangsung berlangsungnya diadakan penyelenggaraan mulai dimulai selesai berakhir sudah lewat belum detail rincian uraian deskripsi penjelasan tema isi berapa hari lagi pukul jam berapakah harganya harga tarif biaya ongkos masuk tiket karcis dewasa anak retribusi rupiah bayar terbaru promo diskon potongan saat sekarang kunjungan buka tutup dibuka beroperasi operasional sampai setiap hari minggu bulan tahun depan besok lusa kemarin akhir pekan weekend mendatang terdekat baru liburan pagi siang sore malam waktu selama esok tersedia tercatat'''.split()) | set(MONTH_LOOKUP)
 ALIASES = {'wisata bahari lamongan': 'wbl', 'goa maharani': 'maharani', 'sundra': 'sunan drajat'}
+STOP.update(('pekan', 'resmi', 'kabupaten', 'budaya', 'kebudayaan'))
 
 
 def tokens(text):
@@ -57,12 +62,39 @@ def event_summary(event, today, detail=False):
     return text
 
 
-def event_answer(message, today, intent):
-    all_events = Event.query.order_by(Event.event_date.asc(), Event.id.asc()).all()
+def official_event_answer(message, today, intent, official_events, period):
+    named = matches(message, official_events)
+    if named and period:
+        named = [event for event in named if event.start and event.start <= period[1] and event.end >= period[0]]
+    if named:
+        events = named
+    elif intent == 'event_schedule' and not tokens(message):
+        start, end = period[:2] if period else (today, date.max)
+        events = [event for event in official_events if event.start and event.start <= end and event.end >= start]
+    else:
+        return None
+    if not events:
+        return None
+    events.sort(key=lambda event: event.start or date.max)
+    lines = [f'Agenda dari {OFFICIAL_SOURCE}:']
+    for event in events[:8]:
+        date_note = '' if event.start else ' (tanggal pastinya belum tercantum)'
+        lines.append(f'• **{event.name}** — {event.date_label}{date_note}')
+    if len(events) > 8:
+        lines.append(f'Menampilkan 8 dari {len(events)} agenda. Lihat Kalender Event untuk jadwal lengkap.')
+    lines.append(f'\nSumber: {OFFICIAL_SOURCE}. Jam belum tercantum di poster. Jadwal bersifat tentatif.')
+    return '\n'.join(lines), [{'label': OFFICIAL_SOURCE, 'url': OFFICIAL_CALENDAR_URL}]
+
+
+def event_answer(message, today, intent, official_events):
     try:
         period = parse_period(message, today)
     except (ValueError, OverflowError):
         return 'Tanggal tidak valid atau belum didukung. Gunakan satu tanggal lengkap, misalnya 6 November 2026, atau “bulan depan”.', []
+    official = official_event_answer(message, today, intent, official_events, period)
+    if official:
+        return official
+    all_events = Event.query.order_by(Event.event_date.asc(), Event.id.asc()).all()
     selected = matches(message, all_events)
     destinations = Destination.query.filter_by(is_active=True).all()
     dest_matches = matches(message, destinations)
@@ -177,8 +209,15 @@ def answer_question(message: str, today=None, holiday_view=None) -> dict:
             return holiday_answer
     prediction = predict_intent(message)
     intent = prediction['intent']
+    official_events = []
+    if intent in ('event_schedule', 'event_detail', 'opening_hours', 'out_of_scope', 'uncertain'):
+        official_events = list(poster_events(today))
+        query = tokens(message)
+        if intent not in ('event_schedule', 'event_detail') and query and any(query == tokens(event.name) for event in official_events):
+            intent = 'event_detail'
+            prediction = {**prediction, 'intent': intent, 'confidence': 1.0}
     if intent in ('event_schedule', 'event_detail'):
-        reply, sources = event_answer(message, today, intent)
+        reply, sources = event_answer(message, today, intent, official_events)
     elif intent in ('destination_info', 'ticket_price', 'opening_hours'):
         reply, sources = destination_answer(message, today, intent)
     elif intent == 'booking':

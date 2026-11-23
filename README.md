@@ -49,7 +49,7 @@ megiloka-retribusi-lamongan/
 │   ├── models.py            # Model SQLAlchemy ORM
 │   ├── requirements.txt     # Dependensi Python
 │   ├── megiloka.db          # Database SQLite lokal
-│   ├── seed_references.py   # Seeder event & destinasi kalender 2026
+│   ├── seed_references.py   # Seeder referensi destinasi
 │   ├── test_verification.py # Script pengujian otomatis
 │   ├── database/
 │   │   ├── schema.sql       # Script DDL MySQL 8.0

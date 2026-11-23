@@ -9,7 +9,7 @@ from config import Config
 # Set before importing app/db; never point these tests at the user's database.
 Config.SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
 from app import app
-from models import db, Destination, Event, TicketType, Promo, User
+from models import db, Destination, Event, Hotel, PADReportRecap, TicketType, Promo, User
 
 
 class DateTests(unittest.TestCase):
@@ -89,12 +89,101 @@ class ChatTests(unittest.TestCase):
         self.assertEqual(result['sources'][0]['url'], '/calendar')
         self.assertEqual(Event.query.count(), before)
 
+    def test_guest_notifications_are_official_and_read_per_session(self):
+        db.session.add(Event(name='[DEMO] Acara Lama', event_date=date(2026, 11, 26)))
+        db.session.commit()
+        with patch('app.today_wib', return_value=date(2026, 11, 23)):
+            items = self.client.get('/api/guest/notifications').get_json()
+            self.assertEqual(items['total'], 2)
+            notice = items['notifications'][0]
+            self.assertIn('Lohgung', notice['title'])
+            response = self.client.post(f"/notifications/read/{notice['id']}")
+            self.assertEqual(response.location, notice['url'])
+            self.assertIn(b'Lohgung', self.client.get(response.location).data)
+            self.assertEqual(self.client.get('/api/guest/notifications').get_json()['total'], 1)
+            self.client.post(f"/notifications/read/{notice['id']}")
+            self.assertEqual(self.client.get('/api/guest/notifications').get_json()['total'], 1)
+            self.assertEqual(app.test_client().get('/api/guest/notifications').get_json()['total'], 2)
+
+    def test_admin_can_delete_event_hotel_and_direct_or_hotel_promos(self):
+        dest = Destination.query.one()
+        hotel = Hotel(name='Hotel Uji', location='Paciran', destination=dest)
+        dates = dict(valid_from=date(2026, 11, 1), valid_until=date(2026, 11, 30))
+        hotel_promo = Promo(name='Promo Hotel Uji', hotel=hotel, **dates)
+        direct_promo = Promo(name='Promo Destinasi Uji', destination=dest, **dates)
+        db.session.add_all([hotel_promo, direct_promo])
+        db.session.commit()
+        promo_id, hotel_id, event_id = direct_promo.id, hotel.id, Event.query.first().id
+        with self.client.session_transaction() as sess:
+            sess.update(user_id=1, user_role='admin')
+        self.assertIn(b'Promo Destinasi Uji', self.client.get('/admin/hotels').data)
+        for collection, record_id in [('events', event_id), ('promos', promo_id), ('hotels', hotel_id)]:
+            self.assertEqual(self.client.post(f'/admin/{collection}/delete/{record_id}').status_code, 302)
+        db.session.expire_all()
+        self.assertIsNone(db.session.get(Event, event_id))
+        self.assertIsNone(db.session.get(Hotel, hotel_id))
+        self.assertEqual(Promo.query.count(), 0)
+
+    def test_delete_destination_removes_unused_data_and_archives_history(self):
+        dest = Destination.query.one()
+        unused = Destination(code='UNUSED', name='Destinasi Uji', location='Lamongan')
+        hotel = Hotel(name='Hotel Uji', location='Lamongan', destination=unused)
+        db.session.add_all([Promo(name='Promo Uji', hotel=hotel, valid_from=date(2026, 11, 1),
+                                  valid_until=date(2026, 11, 30)),
+                            PADReportRecap(destination=dest, report_date=date(2026, 11, 1))])
+        db.session.commit()
+        dest_id, unused_id = dest.id, unused.id
+        with self.client.session_transaction() as sess:
+            sess.update(user_id=1, user_role='admin')
+        for record_id in (unused_id, dest_id):
+            self.assertEqual(self.client.post(f'/admin/destinations/delete/{record_id}').status_code, 302)
+        db.session.expire_all()
+        self.assertIsNone(db.session.get(Destination, unused_id))
+        self.assertEqual(Hotel.query.count(), 0)
+        self.assertEqual(Promo.query.count(), 0)
+        self.assertFalse(db.session.get(Destination, dest_id).is_active)
+        self.assertEqual(PADReportRecap.query.count(), 1)
+        self.assertEqual(self.client.get(f'/booking/{dest_id}').status_code, 404)
+
+    def test_official_calendar_questions_find_multiday_event(self):
+        db.session.add(Event(name='[DEMO] Agenda Uji', event_date=date(2026, 11, 24)))
+        db.session.commit()
+        with patch('ai.concierge.today_wib', return_value=date(2026, 11, 23)):
+            for question in ('Event apa saja besok?', 'Besok ada kegiatan apa?', 'Agenda minggu ini',
+                             'Agenda resmi esok', 'Acara pekan ini', 'Adakah agenda budaya esok hari?',
+                             'Acara tanggal 26 November 2026', 'Petik Laut Lohgung',
+                             'Jam berapa Petik Laut Lohgung?'):
+                with self.subTest(question=question):
+                    response = self.client.post('/api/ai/chat', json={'message': question})
+                    self.assertEqual(response.status_code, 200)
+                    result = response.get_json()
+                    self.assertIn('petik laut lohgung', result['reply'].lower())
+                    self.assertIn('24–27 November 2026', result['reply'])
+                    self.assertIn('Kalender resmi Lamongan', result['reply'])
+                    self.assertEqual(result['sources'][0]['url'], '/calendar#poster-calendar-title')
+                    self.assertNotIn('Agenda Uji', result['reply'])
+
+    def test_official_calendar_excludes_other_dates_and_undated_entries(self):
+        from ai.concierge import answer_question
+        today = date(2026, 11, 23)
+        reply = answer_question('Event apa saja besok?', today=today)['reply']
+        self.assertNotIn('Festival Wingko Babat', reply)
+        reply = answer_question('Jadwal acara bulan depan', today=today)['reply']
+        self.assertIn('Malam Tahun Baruan Megilan', reply)
+        self.assertNotIn('Lohgung', reply)
+
+    def test_named_poster_event_without_day_discloses_missing_date(self):
+        reply = self.answer('Kapan Festival Wingko Babat?')['reply']
+        self.assertIn('November 2026', reply)
+        self.assertIn('tanggal pastinya belum tercantum', reply.lower())
+
     def test_past_named_event_is_not_moved(self):
         result = self.answer('Kapan Festival Kupatan Akbar Tanjung Kodok dilaksanakan?')
         self.assertIn('10 Oktober 2026', result['reply'])
         self.assertIn('sudah lewat', result['reply'])
 
-    def test_missing_time_and_duplicate_names(self):
+    @patch('ai.concierge.poster_events', return_value=())
+    def test_missing_time_and_duplicate_names(self, _poster_events):
         result = self.answer('Jam berapa Haul Sunan Drajat dimulai?')
         self.assertIn('pilih', result['reply'].lower())
         result = self.answer('Jam berapa Haul Sunan Drajat pada 8 November 2026?')
@@ -135,7 +224,8 @@ class ChatTests(unittest.TestCase):
         self.assertNotIn('Haul Sunan Drajat', text)
         self.assertIn('belum ada', self.answer('Event tanggal 6 bulan depan apa?')['reply'].lower())
 
-    def test_indonesian_grammar_is_not_treated_as_unknown_event_name(self):
+    @patch('ai.concierge.poster_events', return_value=())
+    def test_indonesian_grammar_is_not_treated_as_unknown_event_name(self, _poster_events):
         text = self.answer('Event apa saja dalam 7 hari ke depan?')['reply']
         self.assertIn('Festival Pantura', text)
         self.assertIn('Haul Sunan Drajat', text)

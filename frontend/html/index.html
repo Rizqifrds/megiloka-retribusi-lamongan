@@ -49,86 +49,27 @@
         </div>
     </section>
 
-    <div id="spotlightSection" class="spotlight-box mb-5 p-4">
-        <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
-            <div>
-                <span class="badge badge-lamongan-accent px-3 py-2 rounded-pill fw-bold mb-2">
-                    <i class="fa-solid fa-calendar-check me-1"></i>AGENDA & EVENT PILIHAN LAMONGAN
-                </span>
-                <h3 class="fw-bold text-dark mb-1">Sorotan Agenda Terdekat</h3>
-                <p class="text-muted small mb-0">Petunjuk jadwal acara dan pembukaan objek wisata yang berlangsung <strong>besok (H-1)</strong> atau dalam <strong>1 bulan ke depan (H-30)</strong>.</p>
-            </div>
-            <a href="{{ url_for('public_calendar') }}" class="btn btn-outline-primary btn-sm rounded-pill fw-bold px-3 d-flex align-items-center gap-2">
-                <i class="fa-solid fa-calendar-days text-primary"></i>Lihat Semua Kalender
+    <section id="spotlightSection" class="spotlight-box mb-5 p-4" aria-labelledby="official-agenda-title">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+            <h2 id="official-agenda-title" class="h4 fw-bold mb-0">Agenda Terdekat Lamongan</h2>
+            <a class="btn btn-outline-primary btn-sm rounded-pill" href="{{ url_for('public_calendar') }}#poster-calendar-title">
+                Lihat Kalender Resmi
             </a>
         </div>
-
-        {% if spotlight_items %}
-        <div class="row g-4" id="spotlightCardsContainer">
-            {% for item in spotlight_items %}
-            <div class="col-md-6 col-lg-4">
-                <div class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden position-relative bg-white spotlight-card {% if item.is_urgent %}border-urgent{% else %}border-upcoming{% endif %}">
-                    <div style="height: 165px; position: relative; overflow: hidden;">
-                        <img src="{{ item.image_url }}" alt="{{ item.title }}" class="w-100 h-100 object-fit-cover">
-                        <div class="position-absolute top-0 start-0 m-2">
-                            <span class="badge {{ item.badge_class }} rounded-pill px-3 py-2 shadow-sm font-monospace">
-                                {% if item.is_urgent %}<i class="fa-solid fa-bell me-1"></i>{% else %}<i class="fa-solid fa-calendar me-1"></i>{% endif %}
-                                {{ item.badge_label }}
-                            </span>
-                        </div>
-                        <div class="position-absolute bottom-0 end-0 m-2">
-                            <span class="badge bg-dark bg-opacity-75 text-white rounded-pill px-2 py-1 small">{{ item.type_label }}</span>
-                        </div>
-                    </div>
-                    <div class="card-body p-3 d-flex flex-column">
-                        <div class="d-flex align-items-center justify-content-between text-muted small mb-2">
-                            <span><i class="fa-regular fa-clock me-1 text-primary"></i>{{ item.timing_desc }}</span>
-                            <span class="fw-semibold text-dark">{{ item.date_str }}</span>
-                        </div>
-                        <h5 class="card-title fw-bold text-dark mb-1">{{ item.title }}</h5>
-                        <p class="text-muted small mb-2">
-                            <i class="fa-solid fa-location-dot text-danger me-1"></i>{{ item.location }}
-                        </p>
-                        <p class="card-text text-secondary small mb-3 flex-grow-1">{{ item.description | truncate(90) }}</p>
-                        <div class="d-flex gap-2 mt-auto">
-                            <a href="{{ item.url }}" class="btn btn-sm btn-primary rounded-pill w-100 fw-semibold">
-                                {% if item.type == 'destination' %}
-                                    <i class="fa-solid fa-ticket me-1"></i>Detail & Pesan Tiket
-                                {% else %}
-                                    <i class="fa-solid fa-calendar-check me-1"></i>Lihat Jadwal Lengkap
-                                {% endif %}
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <p class="small text-muted mb-3">Berdasarkan kalender resmi Kabupaten Lamongan. Jadwal bersifat tentatif.</p>
+        {% if official_agenda %}
+        <ul class="list-unstyled d-grid gap-2 mb-0">
+            {% for item in official_agenda %}
+            <li class="card card-megiloka p-3">
+                <h3 class="h6 fw-bold mb-1">{{ item.name }}</h3>
+                <span class="small text-muted">{{ item.date_label }}</span>
+            </li>
             {% endfor %}
-        </div>
+        </ul>
         {% else %}
-        <div class="card border-0 shadow-sm rounded-4 p-4 text-center bg-white" id="spotlightEmptyCard">
-            <div class="py-3">
-                <div class="stat-icon mx-auto mb-3 rounded-circle d-flex align-items-center justify-content-center" style="width:64px;height:64px;">
-                    <i class="fa-solid fa-calendar-plus fs-2"></i>
-                </div>
-                <h5 class="fw-bold text-dark">Belum Ada Agenda Terdekat (H-1 atau H-30)</h5>
-                <p class="text-muted col-md-8 mx-auto small mb-3">
-                    Gunakan fitur <strong>Tanya Megi</strong> untuk mencari jadwal acara atau destinasi wisata di Kabupaten Lamongan.
-                </p>
-                <div class="d-flex justify-content-center gap-2 flex-wrap">
-                    <button type="button" class="btn btn-outline-warning text-dark btn-sm rounded-pill fw-bold px-3" onclick="askMegi('Event apa saja besok?')">
-                        <i class="fa-solid fa-bolt text-warning me-1"></i>Event Besok (H-1)
-                    </button>
-                    <button type="button" class="btn btn-primary btn-sm rounded-pill fw-bold px-3" onclick="askMegi('Event apa saja bulan depan?')">
-                        <i class="fa-solid fa-calendar me-1"></i>Event 1 Bulan (H-30)
-                    </button>
-                    <button type="button" class="btn btn-outline-primary btn-sm rounded-pill fw-bold px-3" onclick="askMegi('Destinasi wisata apa saja di Lamongan?')">
-                        <i class="fa-solid fa-umbrella-beach me-1"></i>Destinasi Baru
-                    </button>
-                </div>
-            </div>
-        </div>
+        <p class="text-muted mb-0">Belum ada agenda mendatang dengan tanggal yang tercantum di kalender resmi.</p>
         {% endif %}
-    </div>
+    </section>
 
     <!-- ========================================================= -->
     <!-- WISATA TERPOPULER (SERING DIKUNJUNGI) & PROMO BERLANGSUNG -->
@@ -230,39 +171,6 @@
                 </div>
             </div>
         </div>
-        {% endfor %}
-    </div>
-
-    <!-- Kalender Event Mendatang -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h3 class="fw-bold text-dark mb-0">Kalender Event Kebudayaan Lamongan</h3>
-            <p class="text-muted small mb-0">Agenda festival seni dan pariwisata daerah yang akan datang.</p>
-        </div>
-        <a href="{{ url_for('public_calendar') }}" class="btn btn-outline-primary rounded-pill btn-sm fw-bold">
-            Lihat Semua Event <i class="fa-solid fa-arrow-right ms-1"></i>
-        </a>
-    </div>
-    <div class="row g-4 mb-5">
-        {% for event in events %}
-        <div class="col-md-4">
-            <div class="card border-0 shadow-sm rounded-4 h-100 bg-white">
-                <div class="card-body p-4 d-flex align-items-center">
-                    <div class="event-date-box me-3">
-                        <span class="d-block date-num">{{ event.event_date.strftime('%d') }}</span>
-                        <span class="d-block date-month">{{ event.event_date.strftime('%b') }}</span>
-                    </div>
-                    <div class="overflow-hidden">
-                        <h6 class="fw-bold text-dark mb-1 text-truncate">{{ event.name }}</h6>
-                        <small class="text-muted d-block text-truncate">
-                            <i class="fa-solid fa-location-dot me-1 text-primary"></i>{% if event.destination %}{{ event.destination.name }}{% else %}Kabupaten Lamongan{% endif %}
-                        </small>
-                    </div>
-                </div>
-            </div>
-        </div>
-        {% else %}
-        <div class="col-12 text-center text-muted">Belum ada event wisata dalam waktu dekat.</div>
         {% endfor %}
     </div>
 </div>

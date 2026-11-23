@@ -1,13 +1,13 @@
 {
   "model": "tfidf-logistic-regression",
-  "trained_at_utc": "2026-11-05T07:29:51.894159+00:00",
+  "trained_at_utc": "2026-11-23T03:21:47.150507+00:00",
   "seed": 42,
   "python": "3.12.10",
   "sklearn": "1.9.1",
-  "train_count": 256,
+  "train_count": 262,
   "test_count": 64,
   "train_class_counts": {
-    "event_schedule": 32,
+    "event_schedule": 38,
     "event_detail": 32,
     "destination_info": 32,
     "ticket_price": 32,
@@ -27,13 +27,13 @@
     "out_of_scope": 8
   },
   "data_sha256": {
-    "train.json": "7389381a1373f6fc06f49a82462f708f8d799b1e45ce5001f6cf1be82286a01e",
+    "train.json": "8df07d1fedec16747cd04b9f66fb34c869a553d2f884baf0fdc541d819b44562",
     "test.json": "0681f845cf526ba44d70cd5f365417f119749103f1cbf57e28a85822754b32ba"
   },
   "accuracy": 0.921875,
   "macro_f1": 0.9064171122994652,
   "runtime_accuracy_including_abstentions": 0.921875,
-  "abstentions": 1,
+  "abstentions": 2,
   "labels": [
     "booking",
     "destination_info",
@@ -195,7 +195,7 @@
       "expected": "event_schedule",
       "predicted": "event_schedule",
       "runtime_intent": "event_schedule",
-      "confidence": 0.6294,
+      "confidence": 0.7945,
       "correct": true
     },
     {
@@ -203,7 +203,7 @@
       "expected": "event_schedule",
       "predicted": "event_schedule",
       "runtime_intent": "event_schedule",
-      "confidence": 0.9106,
+      "confidence": 0.9246,
       "correct": true
     },
     {
@@ -211,7 +211,7 @@
       "expected": "event_schedule",
       "predicted": "event_schedule",
       "runtime_intent": "event_schedule",
-      "confidence": 0.9528,
+      "confidence": 0.9404,
       "correct": true
     },
     {
@@ -219,7 +219,7 @@
       "expected": "event_schedule",
       "predicted": "event_schedule",
       "runtime_intent": "event_schedule",
-      "confidence": 0.8857,
+      "confidence": 0.9087,
       "correct": true
     },
     {
@@ -227,7 +227,7 @@
       "expected": "event_schedule",
       "predicted": "event_schedule",
       "runtime_intent": "event_schedule",
-      "confidence": 0.7774,
+      "confidence": 0.7412,
       "correct": true
     },
     {
@@ -235,7 +235,7 @@
       "expected": "event_schedule",
       "predicted": "event_schedule",
       "runtime_intent": "event_schedule",
-      "confidence": 0.7926,
+      "confidence": 0.8145,
       "correct": true
     },
     {
@@ -243,7 +243,7 @@
       "expected": "event_schedule",
       "predicted": "event_schedule",
       "runtime_intent": "event_schedule",
-      "confidence": 0.8942,
+      "confidence": 0.8728,
       "correct": true
     },
     {
@@ -251,7 +251,7 @@
       "expected": "event_schedule",
       "predicted": "event_schedule",
       "runtime_intent": "event_schedule",
-      "confidence": 0.6987,
+      "confidence": 0.712,
       "correct": true
     },
     {
@@ -259,7 +259,7 @@
       "expected": "event_detail",
       "predicted": "event_detail",
       "runtime_intent": "event_detail",
-      "confidence": 0.9743,
+      "confidence": 0.9754,
       "correct": true
     },
     {
@@ -267,7 +267,7 @@
       "expected": "event_detail",
       "predicted": "event_detail",
       "runtime_intent": "event_detail",
-      "confidence": 0.7847,
+      "confidence": 0.7898,
       "correct": true
     },
     {
@@ -275,7 +275,7 @@
       "expected": "event_detail",
       "predicted": "event_detail",
       "runtime_intent": "event_detail",
-      "confidence": 0.9076,
+      "confidence": 0.9074,
       "correct": true
     },
     {
@@ -283,7 +283,7 @@
       "expected": "event_detail",
       "predicted": "event_detail",
       "runtime_intent": "event_detail",
-      "confidence": 0.7955,
+      "confidence": 0.7961,
       "correct": true
     },
     {
@@ -291,7 +291,7 @@
       "expected": "event_detail",
       "predicted": "event_detail",
       "runtime_intent": "event_detail",
-      "confidence": 0.8062,
+      "confidence": 0.8044,
       "correct": true
     },
     {
@@ -299,7 +299,7 @@
       "expected": "event_detail",
       "predicted": "event_detail",
       "runtime_intent": "event_detail",
-      "confidence": 0.587,
+      "confidence": 0.5924,
       "correct": true
     },
     {
@@ -307,7 +307,7 @@
       "expected": "event_detail",
       "predicted": "event_detail",
       "runtime_intent": "event_detail",
-      "confidence": 0.5728,
+      "confidence": 0.5856,
       "correct": true
     },
     {
@@ -315,7 +315,7 @@
       "expected": "event_detail",
       "predicted": "event_detail",
       "runtime_intent": "event_detail",
-      "confidence": 0.7927,
+      "confidence": 0.7988,
       "correct": true
     },
     {
@@ -323,7 +323,7 @@
       "expected": "destination_info",
       "predicted": "destination_info",
       "runtime_intent": "destination_info",
-      "confidence": 0.9473,
+      "confidence": 0.9488,
       "correct": true
     },
     {
@@ -331,7 +331,7 @@
       "expected": "destination_info",
       "predicted": "destination_info",
       "runtime_intent": "destination_info",
-      "confidence": 0.9348,
+      "confidence": 0.9358,
       "correct": true
     },
     {
@@ -339,7 +339,7 @@
       "expected": "destination_info",
       "predicted": "destination_info",
       "runtime_intent": "destination_info",
-      "confidence": 0.9131,
+      "confidence": 0.9079,
       "correct": true
     },
     {
@@ -347,7 +347,7 @@
       "expected": "destination_info",
       "predicted": "destination_info",
       "runtime_intent": "destination_info",
-      "confidence": 0.833,
+      "confidence": 0.838,
       "correct": true
     },
     {
@@ -355,7 +355,7 @@
       "expected": "destination_info",
       "predicted": "destination_info",
       "runtime_intent": "destination_info",
-      "confidence": 0.7531,
+      "confidence": 0.7584,
       "correct": true
     },
     {
@@ -363,7 +363,7 @@
       "expected": "destination_info",
       "predicted": "destination_info",
       "runtime_intent": "destination_info",
-      "confidence": 0.7755,
+      "confidence": 0.7856,
       "correct": true
     },
     {
@@ -371,7 +371,7 @@
       "expected": "destination_info",
       "predicted": "destination_info",
       "runtime_intent": "destination_info",
-      "confidence": 0.8221,
+      "confidence": 0.827,
       "correct": true
     },
     {
@@ -379,7 +379,7 @@
       "expected": "destination_info",
       "predicted": "destination_info",
       "runtime_intent": "destination_info",
-      "confidence": 0.5263,
+      "confidence": 0.5421,
       "correct": true
     },
     {
@@ -387,7 +387,7 @@
       "expected": "ticket_price",
       "predicted": "ticket_price",
       "runtime_intent": "ticket_price",
-      "confidence": 0.8858,
+      "confidence": 0.8879,
       "correct": true
     },
     {
@@ -395,7 +395,7 @@
       "expected": "ticket_price",
       "predicted": "ticket_price",
       "runtime_intent": "ticket_price",
-      "confidence": 0.8944,
+      "confidence": 0.8963,
       "correct": true
     },
     {
@@ -403,7 +403,7 @@
       "expected": "ticket_price",
       "predicted": "ticket_price",
       "runtime_intent": "ticket_price",
-      "confidence": 0.4397,
+      "confidence": 0.4424,
       "correct": true
     },
     {
@@ -411,7 +411,7 @@
       "expected": "ticket_price",
       "predicted": "ticket_price",
       "runtime_intent": "ticket_price",
-      "confidence": 0.8014,
+      "confidence": 0.8051,
       "correct": true
     },
     {
@@ -419,7 +419,7 @@
       "expected": "ticket_price",
       "predicted": "ticket_price",
       "runtime_intent": "ticket_price",
-      "confidence": 0.7957,
+      "confidence": 0.7987,
       "correct": true
     },
     {
@@ -427,7 +427,7 @@
       "expected": "ticket_price",
       "predicted": "ticket_price",
       "runtime_intent": "ticket_price",
-      "confidence": 0.8315,
+      "confidence": 0.8026,
       "correct": true
     },
     {
@@ -435,7 +435,7 @@
       "expected": "ticket_price",
       "predicted": "ticket_price",
       "runtime_intent": "ticket_price",
-      "confidence": 0.7754,
+      "confidence": 0.7784,
       "correct": true
     },
     {
@@ -443,7 +443,7 @@
       "expected": "ticket_price",
       "predicted": "ticket_price",
       "runtime_intent": "ticket_price",
-      "confidence": 0.7469,
+      "confidence": 0.7515,
       "correct": true
     },
     {
@@ -451,7 +451,7 @@
       "expected": "booking",
       "predicted": "booking",
       "runtime_intent": "booking",
-      "confidence": 0.6883,
+      "confidence": 0.6902,
       "correct": true
     },
     {
@@ -459,7 +459,7 @@
       "expected": "booking",
       "predicted": "booking",
       "runtime_intent": "booking",
-      "confidence": 0.9269,
+      "confidence": 0.9298,
       "correct": true
     },
     {
@@ -467,7 +467,7 @@
       "expected": "booking",
       "predicted": "booking",
       "runtime_intent": "booking",
-      "confidence": 0.7559,
+      "confidence": 0.7578,
       "correct": true
     },
     {
@@ -475,7 +475,7 @@
       "expected": "booking",
       "predicted": "booking",
       "runtime_intent": "booking",
-      "confidence": 0.7558,
+      "confidence": 0.7584,
       "correct": true
     },
     {
@@ -483,7 +483,7 @@
       "expected": "booking",
       "predicted": "booking",
       "runtime_intent": "booking",
-      "confidence": 0.8646,
+      "confidence": 0.8654,
       "correct": true
     },
     {
@@ -491,7 +491,7 @@
       "expected": "booking",
       "predicted": "booking",
       "runtime_intent": "booking",
-      "confidence": 0.8163,
+      "confidence": 0.8188,
       "correct": true
     },
     {
@@ -499,7 +499,7 @@
       "expected": "booking",
       "predicted": "booking",
       "runtime_intent": "booking",
-      "confidence": 0.9103,
+      "confidence": 0.9118,
       "correct": true
     },
     {
@@ -507,7 +507,7 @@
       "expected": "booking",
       "predicted": "booking",
       "runtime_intent": "booking",
-      "confidence": 0.7378,
+      "confidence": 0.7404,
       "correct": true
     },
     {
@@ -515,7 +515,7 @@
       "expected": "greeting",
       "predicted": "greeting",
       "runtime_intent": "greeting",
-      "confidence": 0.9887,
+      "confidence": 0.9891,
       "correct": true
     },
     {
@@ -523,7 +523,7 @@
       "expected": "greeting",
       "predicted": "greeting",
       "runtime_intent": "greeting",
-      "confidence": 0.9701,
+      "confidence": 0.9706,
       "correct": true
     },
     {
@@ -531,7 +531,7 @@
       "expected": "greeting",
       "predicted": "greeting",
       "runtime_intent": "greeting",
-      "confidence": 0.8409,
+      "confidence": 0.8433,
       "correct": true
     },
     {
@@ -539,7 +539,7 @@
       "expected": "greeting",
       "predicted": "greeting",
       "runtime_intent": "greeting",
-      "confidence": 0.932,
+      "confidence": 0.9337,
       "correct": true
     },
     {
@@ -547,7 +547,7 @@
       "expected": "greeting",
       "predicted": "greeting",
       "runtime_intent": "greeting",
-      "confidence": 0.3886,
+      "confidence": 0.3888,
       "correct": true
     },
     {
@@ -555,7 +555,7 @@
       "expected": "greeting",
       "predicted": "greeting",
       "runtime_intent": "greeting",
-      "confidence": 0.8619,
+      "confidence": 0.8641,
       "correct": true
     },
     {
@@ -563,7 +563,7 @@
       "expected": "greeting",
       "predicted": "greeting",
       "runtime_intent": "greeting",
-      "confidence": 0.8049,
+      "confidence": 0.8076,
       "correct": true
     },
     {
@@ -571,7 +571,7 @@
       "expected": "greeting",
       "predicted": "greeting",
       "runtime_intent": "greeting",
-      "confidence": 0.7297,
+      "confidence": 0.7329,
       "correct": true
     },
     {
@@ -579,7 +579,7 @@
       "expected": "opening_hours",
       "predicted": "opening_hours",
       "runtime_intent": "opening_hours",
-      "confidence": 0.8524,
+      "confidence": 0.8534,
       "correct": true
     },
     {
@@ -587,7 +587,7 @@
       "expected": "opening_hours",
       "predicted": "opening_hours",
       "runtime_intent": "opening_hours",
-      "confidence": 0.6185,
+      "confidence": 0.6196,
       "correct": true
     },
     {
@@ -595,7 +595,7 @@
       "expected": "opening_hours",
       "predicted": "opening_hours",
       "runtime_intent": "opening_hours",
-      "confidence": 0.4299,
+      "confidence": 0.3857,
       "correct": true
     },
     {
@@ -603,7 +603,7 @@
       "expected": "opening_hours",
       "predicted": "opening_hours",
       "runtime_intent": "opening_hours",
-      "confidence": 0.8543,
+      "confidence": 0.8559,
       "correct": true
     },
     {
@@ -611,7 +611,7 @@
       "expected": "opening_hours",
       "predicted": "opening_hours",
       "runtime_intent": "opening_hours",
-      "confidence": 0.468,
+      "confidence": 0.471,
       "correct": true
     },
     {
@@ -619,7 +619,7 @@
       "expected": "opening_hours",
       "predicted": "opening_hours",
       "runtime_intent": "opening_hours",
-      "confidence": 0.802,
+      "confidence": 0.796,
       "correct": true
     },
     {
@@ -627,7 +627,7 @@
       "expected": "opening_hours",
       "predicted": "opening_hours",
       "runtime_intent": "opening_hours",
-      "confidence": 0.8993,
+      "confidence": 0.8994,
       "correct": true
     },
     {
@@ -635,7 +635,7 @@
       "expected": "opening_hours",
       "predicted": "opening_hours",
       "runtime_intent": "opening_hours",
-      "confidence": 0.7395,
+      "confidence": 0.7464,
       "correct": true
     },
     {
@@ -643,7 +643,7 @@
       "expected": "out_of_scope",
       "predicted": "greeting",
       "runtime_intent": "greeting",
-      "confidence": 0.5005,
+      "confidence": 0.502,
       "correct": false
     },
     {
@@ -651,7 +651,7 @@
       "expected": "out_of_scope",
       "predicted": "out_of_scope",
       "runtime_intent": "out_of_scope",
-      "confidence": 0.6557,
+      "confidence": 0.6508,
       "correct": true
     },
     {
@@ -659,7 +659,7 @@
       "expected": "out_of_scope",
       "predicted": "ticket_price",
       "runtime_intent": "uncertain",
-      "confidence": 0.3175,
+      "confidence": 0.319,
       "correct": false
     },
     {
@@ -667,7 +667,7 @@
       "expected": "out_of_scope",
       "predicted": "out_of_scope",
       "runtime_intent": "out_of_scope",
-      "confidence": 0.6914,
+      "confidence": 0.6998,
       "correct": true
     },
     {
@@ -675,15 +675,15 @@
       "expected": "out_of_scope",
       "predicted": "booking",
       "runtime_intent": "booking",
-      "confidence": 0.5495,
+      "confidence": 0.5484,
       "correct": false
     },
     {
       "text": "Prediksi investasi emas minggu depan",
       "expected": "out_of_scope",
       "predicted": "event_schedule",
-      "runtime_intent": "event_schedule",
-      "confidence": 0.4373,
+      "runtime_intent": "uncertain",
+      "confidence": 0.4121,
       "correct": false
     },
     {
@@ -691,7 +691,7 @@
       "expected": "out_of_scope",
       "predicted": "destination_info",
       "runtime_intent": "destination_info",
-      "confidence": 0.4591,
+      "confidence": 0.4613,
       "correct": false
     },
     {
@@ -699,7 +699,7 @@
       "expected": "out_of_scope",
       "predicted": "out_of_scope",
       "runtime_intent": "out_of_scope",
-      "confidence": 0.3339,
+      "confidence": 0.3369,
       "correct": true
     }
   ],

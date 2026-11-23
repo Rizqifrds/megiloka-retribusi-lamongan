@@ -1,4 +1,5 @@
 import hmac
+from hashlib import sha256
 import os
 import sys
 import io
@@ -20,11 +21,13 @@ FRONTEND_DIR = os.path.join(PROJECT_ROOT, 'frontend')
 from flask import (
     Flask, render_template, request, redirect, url_for, flash, session, jsonify, Response, send_from_directory
 )
+from sqlalchemy.exc import IntegrityError
+
 from config import Config
 from models import db, Destination, User, TicketType, Transaction, Ticket, PADReportRecap, Hotel, Promo, Event
 from utils.qr_generator import create_ticket_qr_payload, verify_qr_payload, generate_qr_image_base64
 from utils.holiday_feed import HolidayFeed
-from utils.lamongan_calendar import POSTER_PAGE, POSTER_YEAR, poster_months
+from utils.lamongan_calendar import POSTER_PAGE, POSTER_YEAR, poster_events, poster_months, upcoming_poster_events
 from ai.dates import today_wib
 from ai.concierge import answer_question
 from ai.intent_model import ModelUnavailable
@@ -180,150 +183,43 @@ def seed_database():
             db.session.commit()
             print("[INFO] MegiLoka Database destinations & tickets populated.")
 
-        # Ensure active promos for top frequently visited destinations
-        if Promo.query.count() == 0:
-            print("[INFO] Seeding active promotions for top visited destinations...")
-            today = date.today()
-            v_from = today - timedelta(days=5)
-            v_until = today + timedelta(days=60)
-
-            dest_wbl = Destination.query.filter(Destination.name.like('%Bahari Lamongan%')).first()
-            dest_mzg = Destination.query.filter(Destination.name.like('%Maharani%')).first()
-            dest_snd = Destination.query.filter(Destination.name.like('%Sunan Drajat%')).first()
-            dest_ktg = Destination.query.filter(Destination.name.like('%Pantai Kutang%')).first()
-            dest_wdg = Destination.query.filter(Destination.name.like('%Waduk Gondang%')).first()
-
-            promos_data = [
-                (dest_wbl, 'Promo Megilan Bahari Spesial', 20.0, 'Diskon 20% tiket terusan wahana modern WBL Pantura.', v_from, v_until),
-                (dest_mzg, 'Promo Liburan Ceria Zoo & Goa', 15.0, 'Diskon 15% tiket terusan kebun binatang modern dan goa alami.', v_from, v_until),
-                (dest_snd, 'Promo Berkah Ziarah Walisongo', 20.0, 'Diskon 20% retribusi masuk kawasan wisata religi & museum.', v_from, v_until),
-                (dest_ktg, 'Promo Senja Bahari Pantai Kutang', 20.0, 'Diskon 20% tiket eksplorasi jembatan mangrove & pantai.', v_from, v_until),
-                (dest_wdg, 'Promo Wisata Asri Waduk Gondang', 20.0, 'Diskon 20% tiket rekreasi danau dan taman bermain keluarga.', v_from, v_until),
-            ]
-            for dest, p_name, disc, desc, vf, vu in promos_data:
-                if dest:
-                    db.session.add(Promo(
-                        destination_id=dest.id,
-                        name=p_name,
-                        discount_percent=disc,
-                        description=desc,
-                        valid_from=vf,
-                        valid_until=vu
-                    ))
-            db.session.commit()
-            print("[INFO] Active promotions seeded successfully.")
 
 # ----------------------------
-# UPCOMING SPOTLIGHT & NOTIFICATIONS HELPER
+# OFFICIAL AGENDA NOTIFICATIONS
 # ----------------------------
 
 def get_upcoming_items():
-    today = date.today()
+    today = today_wib()
+    cutoff = today + timedelta(days=30)
+    read_ids = set(session.get('read_agenda_notifications', ()))
     items = []
-
-    # 1. Events Mendatang (Unified Lamongan Color System)
-    upcoming_events = Event.query.filter(Event.event_date >= today).order_by(Event.event_date.asc()).all()
-    for ev in upcoming_events:
-        diff = (ev.event_date - today).days
-        is_urgent = (diff <= 1)
-        is_month = (1 < diff <= 30)
-
-        # Lamongan Identity Badges: Gold for immediate/urgent, Blue for 1 month
-        if diff == 0:
-            badge_label = "SEDANG BERLANGSUNG"
-            badge_class = "lamongan-urgent"
-            timing_desc = "Sedang Berlangsung Hari Ini"
-        elif diff == 1:
-            badge_label = "H-1 (BESOK BERLANGSUNG)"
-            badge_class = "lamongan-urgent"
-            timing_desc = "Akan Berlangsung Besok"
-        elif diff <= 30:
-            badge_label = f"H-{diff} (1 BULAN LAGI)"
-            badge_class = "lamongan-upcoming"
-            timing_desc = f"Akan Berlangsung dalam {diff} Hari"
-        else:
-            badge_label = f"AGENDA MENDATANG ({diff} HARI)"
-            badge_class = "lamongan-subtle"
-            timing_desc = f"Agenda {diff} Hari ke Depan"
-
+    for event in poster_events(today):
+        if not event.start or event.end < today or event.start > cutoff:
+            continue
+        days_left = (event.start - today).days
+        timing = 'Sedang berlangsung' if days_left < 0 else 'Hari ini' if days_left == 0 else 'Besok' if days_left == 1 else f'{days_left} hari lagi'
+        key = sha256(f'{event.name}|{event.start}|{event.end}'.encode()).hexdigest()[:20]
         items.append({
-            'id': ev.id,
+            'id': key,
             'type': 'event',
-            'type_label': 'Event Pariwisata',
-            'title': ev.name,
-            'date': ev.event_date,
-            'date_str': ev.event_date.strftime('%d %B %Y'),
-            'days_left': diff,
-            'is_urgent': is_urgent,
-            'is_month': is_month,
-            'badge_label': badge_label,
-            'badge_class': badge_class,
-            'timing_desc': timing_desc,
-            'description': ev.description or 'Event budaya & pariwisata daerah Lamongan.',
-            'image_url': ev.image_url or 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=800&q=80',
-            'location': ev.destination.name if ev.destination else 'Kabupaten Lamongan',
-            'url': url_for('public_calendar')
+            'title': event.name,
+            'date_str': event.date_label,
+            'is_read': key in read_ids,
+            'timing_desc': timing,
+            'url': url_for('public_calendar', _anchor=event.anchor),
+            'days_left': days_left,
         })
+    return sorted(items, key=lambda item: item['days_left'])
 
-    # 2. Destinasi Baru dengan Opening Date
-    upcoming_dests = Destination.query.filter(
-        Destination.opening_date.isnot(None),
-        Destination.opening_date >= today
-    ).order_by(Destination.opening_date.asc()).all()
-
-    for dst in upcoming_dests:
-        diff = (dst.opening_date - today).days
-        is_urgent = (diff <= 1)
-        is_month = (1 < diff <= 30)
-
-        if diff == 0:
-            badge_label = "GRAND OPENING HARI INI"
-            badge_class = "lamongan-urgent"
-            timing_desc = "Grand Opening Hari Ini"
-        elif diff == 1:
-            badge_label = "H-1 (BESOK GRAND OPENING)"
-            badge_class = "lamongan-urgent"
-            timing_desc = "Grand Opening Besok"
-        elif diff <= 30:
-            badge_label = f"H-{diff} (BUKA BULAN DEPAN)"
-            badge_class = "lamongan-upcoming"
-            timing_desc = f"Buka dalam {diff} Hari"
-        else:
-            badge_label = f"DESTINASI BARU ({diff} HARI)"
-            badge_class = "lamongan-subtle"
-            timing_desc = f"Buka {diff} Hari ke Depan"
-
-        items.append({
-            'id': dst.id,
-            'type': 'destination',
-            'type_label': 'Destinasi Baru',
-            'title': dst.name,
-            'date': dst.opening_date,
-            'date_str': dst.opening_date.strftime('%d %B %Y'),
-            'days_left': diff,
-            'is_urgent': is_urgent,
-            'is_month': is_month,
-            'badge_label': badge_label,
-            'badge_class': badge_class,
-            'timing_desc': timing_desc,
-            'description': dst.description or 'Destinasi wisata terbaru di Kabupaten Lamongan.',
-            'image_url': dst.image_url or 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80',
-            'location': dst.location,
-            'url': url_for('destination_detail', id=dst.id)
-        })
-
-    items.sort(key=lambda x: x['days_left'])
-    return items
 
 @app.context_processor
 def inject_global_data():
-    all_upcoming = get_upcoming_items()
-    # Filter alert notifikasi untuk guest: range 1 hari (H-1) atau 1 bulan (H-30)
-    alert_notifications = [item for item in all_upcoming if item['days_left'] <= 30]
+    notifications = get_upcoming_items()
     return {
-        'guest_notifications': alert_notifications,
-        'total_notifications': len(alert_notifications)
+        'guest_notifications': notifications,
+        'total_notifications': sum(not item['is_read'] for item in notifications),
     }
+
 
 # ----------------------------
 # PUBLIC ROUTES (Promosi & E-Booking)
@@ -331,16 +227,11 @@ def inject_global_data():
 
 @app.route('/')
 def index():
-    today = date.today()
+    today = today_wib()
 
-    # Revisions: Only frequently visited destinations with active ongoing promo
-    active_promo_dest_ids = [
-        p.destination_id for p in Promo.query.filter(
-            Promo.destination_id.isnot(None),
-            Promo.valid_from <= today,
-            Promo.valid_until >= today
-        ).all()
-    ]
+    active_promo_dest_ids = db.session.query(db.func.coalesce(Promo.destination_id, Hotel.destination_id)).outerjoin(
+        Hotel, Promo.hotel_id == Hotel.id
+    ).filter(Promo.valid_from <= today, Promo.valid_until >= today)
 
     # Order popular destinations by ticket sales
     popular_dest_ids = [
@@ -365,28 +256,13 @@ def index():
     if not featured_destinations:
         featured_destinations = Destination.query.filter_by(is_active=True).limit(5).all()
 
-    total_dest = Destination.query.count()
-    upcoming_events = Event.query.filter(Event.event_date >= today).order_by(Event.event_date.asc()).limit(3).all()
-
-    active_promos = Promo.query.filter(Promo.valid_until >= today).all()
-
-    all_upcoming = get_upcoming_items()
-    seen_titles = set()
-    spotlight_items = []
-    for item in all_upcoming:
-        if item['days_left'] <= 30 and item['title'] not in seen_titles:
-            seen_titles.add(item['title'])
-            spotlight_items.append(item)
-        if len(spotlight_items) >= 3:
-            break
+    total_dest = Destination.query.filter_by(is_active=True).count()
 
     return render_template(
         'index.html',
         destinations=featured_destinations,
         total_dest=total_dest,
-        events=upcoming_events,
-        promos=active_promos,
-        spotlight_items=spotlight_items,
+        official_agenda=upcoming_poster_events(today),
         promo_feed=holiday_feed.promo_view(),
     )
 
@@ -527,13 +403,16 @@ def destinations():
 
 @app.route('/destinations/<int:id>')
 def destination_detail(id):
-    destination = Destination.query.get_or_404(id)
+    destination = Destination.query.filter_by(id=id, is_active=True).first_or_404()
     ticket_types = TicketType.query.filter_by(destination_id=id).all()
     return render_template('destination_detail.html', destination=destination, ticket_types=ticket_types)
 
 @app.route('/booking/<int:destination_id>', methods=['GET', 'POST'])
 def booking(destination_id):
-    destination = Destination.query.get_or_404(destination_id)
+    destination_query = Destination.query.filter_by(id=destination_id, is_active=True)
+    if request.method == 'POST':
+        destination_query = destination_query.with_for_update()
+    destination = destination_query.first_or_404()
     ticket_types = TicketType.query.filter_by(destination_id=destination_id).all()
 
     if request.method == 'POST':
@@ -648,14 +527,14 @@ def pos():
     elif not selected_dest_id and destinations:
         selected_dest_id = destinations[0].id
 
-    selected_dest = Destination.query.get(selected_dest_id) if selected_dest_id else None
-    ticket_types = TicketType.query.filter_by(destination_id=selected_dest_id).all() if selected_dest_id else []
+    selected_dest = next((dest for dest in destinations if dest.id == selected_dest_id), None)
+    ticket_types = selected_dest.ticket_types if selected_dest else []
 
     if request.method == 'POST':
         visitor_name = request.form.get('visitor_name', 'Pengunjung Loket').strip()
         payment_method = request.form.get('payment_method', 'cash')
         dest_id = int(request.form.get('destination_id'))
-        dest = Destination.query.get_or_404(dest_id)
+        dest = Destination.query.filter_by(id=dest_id, is_active=True).with_for_update().first_or_404()
 
         tt_list = TicketType.query.filter_by(destination_id=dest_id).all()
         total_amount = 0
@@ -1028,12 +907,28 @@ def destination_edit(id):
 @login_required
 @role_required('admin')
 def destination_delete(id):
-    dest = Destination.query.get_or_404(id)
-    name = dest.name
-    db.session.delete(dest)
-    db.session.commit()
-    flash(f'Destinasi wisata {name} telah dihapus.', 'info')
-    return redirect(url_for('destinations_crud'))
+    dest = Destination.query.filter_by(id=id).with_for_update().first_or_404()
+    if (Transaction.query.filter_by(destination_id=id).first()
+            or PADReportRecap.query.filter_by(destination_id=id).first()):
+        dest.is_active = False
+        db.session.commit()
+        flash(f'Destinasi {dest.name} dinonaktifkan. Riwayat transaksi dan PAD tetap tersimpan.', 'info')
+        return redirect(url_for('destinations_crud'))
+    return delete_admin_record(dest, 'Destinasi', 'destinations_crud')
+
+
+def delete_admin_record(record, label, return_to):
+    name = record.name
+    db.session.delete(record)
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        app.logger.exception('Could not delete %s', type(record).__name__)
+        flash(f'{label} masih terkait dengan data lain atau telah berubah. Muat ulang dan coba lagi.', 'danger')
+    else:
+        flash(f'{label} {name} telah dihapus.', 'success')
+    return redirect(url_for(return_to))
 
 @app.route('/admin/ticket-types/create', methods=['POST'])
 @login_required
@@ -1063,8 +958,23 @@ def ticket_type_create():
 @role_required('admin')
 def hotels_crud():
     hotels = Hotel.query.order_by(Hotel.id.desc()).all()
-    destinations = Destination.query.all()
-    return render_template('admin/hotels_crud.html', hotels=hotels, destinations=destinations)
+    destinations = Destination.query.filter_by(is_active=True).all()
+    direct_promos = Promo.query.filter_by(hotel_id=None).order_by(Promo.valid_until.desc()).all()
+    return render_template('admin/hotels_crud.html', hotels=hotels, destinations=destinations, direct_promos=direct_promos)
+
+
+@app.post('/admin/hotels/delete/<int:id>')
+@login_required
+@role_required('admin')
+def hotel_delete(id):
+    return delete_admin_record(db.get_or_404(Hotel, id), 'Hotel', 'hotels_crud')
+
+
+@app.post('/admin/promos/delete/<int:id>')
+@login_required
+@role_required('admin')
+def promo_delete(id):
+    return delete_admin_record(db.get_or_404(Promo, id), 'Promo', 'hotels_crud')
 
 @app.route('/admin/hotels/create', methods=['POST'])
 @login_required
@@ -1112,6 +1022,13 @@ def events_crud():
     destinations = Destination.query.all()
     return render_template('admin/events_crud.html', events=events, destinations=destinations)
 
+
+@app.post('/admin/events/delete/<int:id>')
+@login_required
+@role_required('admin')
+def event_delete(id):
+    return delete_admin_record(db.get_or_404(Event, id), 'Event', 'events_crud')
+
 @app.route('/admin/events/create', methods=['POST'])
 @login_required
 @role_required('admin')
@@ -1134,10 +1051,9 @@ def event_create():
 
 @app.route('/calendar')
 def public_calendar():
-    events = Event.query.order_by(Event.event_date.asc()).all()
     today = today_wib()
     return render_template(
-        'calendar.html', events=events, instagram_events=holiday_feed.instagram_events(today),
+        'calendar.html', instagram_events=holiday_feed.instagram_events(today),
         poster_months=poster_months(today), poster_year=POSTER_YEAR, poster_source=POSTER_PAGE,
         poster_page_updated=holiday_feed.poster_page_updated(),
         district_events=holiday_feed.district_events(today),
@@ -1183,35 +1099,21 @@ def logout():
 # AI CONCIERGE & CS AUTO-PUBLISHER API
 # ----------------------------
 
-@app.route('/api/guest/notifications', methods=['GET'])
+@app.route('/api/guest/notifications')
 def api_guest_notifications():
-    all_upcoming = get_upcoming_items()
-    alert_notifications = [item for item in all_upcoming if item['days_left'] <= 30]
+    items = get_upcoming_items()
+    return jsonify(success=True, total=sum(not item['is_read'] for item in items), notifications=items)
 
-    notifs_json = []
-    for it in alert_notifications:
-        notifs_json.append({
-            'id': it['id'],
-            'type': it['type'],
-            'type_label': it['type_label'],
-            'title': it['title'],
-            'date_str': it['date_str'],
-            'days_left': it['days_left'],
-            'is_urgent': it['is_urgent'],
-            'badge_label': it['badge_label'],
-            'badge_class': it['badge_class'],
-            'timing_desc': it['timing_desc'],
-            'description': it['description'],
-            'image_url': it['image_url'],
-            'location': it['location'],
-            'url': it['url']
-        })
 
-    return jsonify({
-        'success': True,
-        'total': len(notifs_json),
-        'notifications': notifs_json
-    })
+@app.post('/notifications/read/<notification_id>')
+def read_guest_notification(notification_id):
+    items = get_upcoming_items()
+    selected = next((item for item in items if item['id'] == notification_id), None)
+    if selected is None:
+        return redirect(url_for('public_calendar', _anchor='poster-calendar-title'), code=303)
+    session['read_agenda_notifications'] = [item['id'] for item in items if item['is_read'] or item is selected]
+    return redirect(selected['url'], code=303)
+
 
 @app.route('/api/ai/chat', methods=['POST'])
 def api_ai_chat():
@@ -1279,7 +1181,6 @@ def api_ai_chat():
         db.session.add(new_event)
         db.session.commit()
 
-        is_alert_range = (days_diff <= 30)
         timing_status = "H-1 Hari (Besok!)" if days_diff <= 1 else f"H-{days_diff} (1 Bulan ke Depan)" if days_diff <= 30 else f"Agenda {days_diff} Hari ke Depan"
 
         reply_msg = (
@@ -1289,16 +1190,7 @@ def api_ai_chat():
             f"📍 **Lokasi**: {dest_obj.name if dest_obj else 'Kabupaten Lamongan'}\n"
             f"📝 **Deskripsi**: {new_event.description}\n\n"
         )
-        if is_alert_range:
-            reply_msg += (
-                f"🔔 **Status Notifikasi Role Guest**: Karena event ini dijadwalkan dalam rentang "
-                f"{'1 hari (besok)' if days_diff <= 1 else '1 bulan ke depan'}, event ini **otomatis tayang di Beranda (Section Spotlight)** "
-                f"dan **menyalakan lonceng notifikasi serta alert bagi pengunjung (guest)**! 🚀"
-            )
-        else:
-            reply_msg += (
-                f"🗓️ **Status Agenda**: Event ini telah terdaftar dalam kalender pariwisata 1 tahun ke depan dan dapat diakses pada halaman Kalender Event."
-            )
+        reply_msg += 'Event tersimpan di Kelola Kalender Event sebagai agenda internal.'
 
         return jsonify({
             'success': True,
@@ -1310,7 +1202,7 @@ def api_ai_chat():
                 'name': new_event.name,
                 'date': str(new_event.event_date),
                 'days_left': days_diff,
-                'is_spotlight': is_alert_range,
+                'is_spotlight': False,
                 'badge': 'H-1 (BESOK!)' if days_diff <= 1 else f'H-{days_diff} (1 BULAN LAGI)' if days_diff <= 30 else f'{days_diff} HARI'
             }
         })
@@ -1358,7 +1250,6 @@ def api_ai_chat():
         db.session.add(tt)
         db.session.commit()
 
-        is_alert_range = (days_diff <= 30)
         timing_status = "H-1 Hari (Besok Grand Opening!)" if days_diff <= 1 else f"Buka dalam {days_diff} Hari (1 Bulan Lagi)" if days_diff <= 30 else f"Grand Opening {days_diff} Hari ke Depan"
 
         reply_msg = (
@@ -1369,16 +1260,7 @@ def api_ai_chat():
             f"💰 **Tarif Tiket Masuk**: Rp {new_dest.base_price:,.0f}\n"
             f"📝 **Deskripsi**: {new_dest.description}\n\n"
         )
-        if is_alert_range:
-            reply_msg += (
-                f"🔔 **Status Notifikasi Role Guest**: Karena destinasi ini dijadwalkan dibuka dalam rentang "
-                f"{'1 hari (besok)' if days_diff <= 1 else '1 bulan ke depan'}, objek wisata ini **otomatis dipromosikan di Beranda MegiLoka** "
-                f"dan **memberikan sinyal notifikasi aktif kepada wisatawan (guest)**! 🚀"
-            )
-        else:
-            reply_msg += (
-                f"🌟 **Status Master Data**: Destinasi baru ini telah terdaftar di database untuk persiapan peluncuran wisata 1 tahun ke depan."
-            )
+        reply_msg += 'Destinasi tersimpan di Kelola Destinasi.'
 
         return jsonify({
             'success': True,
@@ -1391,7 +1273,7 @@ def api_ai_chat():
                 'code': new_dest.code,
                 'opening_date': str(new_dest.opening_date),
                 'days_left': days_diff,
-                'is_spotlight': is_alert_range,
+                'is_spotlight': False,
                 'badge': 'H-1 (BESOK!)' if days_diff <= 1 else f'H-{days_diff} (1 BULAN LAGI)' if days_diff <= 30 else f'{days_diff} HARI'
             }
         })

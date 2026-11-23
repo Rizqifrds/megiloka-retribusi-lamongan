@@ -7,7 +7,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h2 class="fw-bold text-dark mb-1"><i class="fa-solid fa-calendar-days text-primary me-2"></i>Kelola Kalender Event</h2>
-            <p class="text-muted mb-0">Tambah dan atur jadwal acara pariwisata di Kabupaten Lamongan.</p>
+            <p class="text-muted mb-0">Kelola agenda internal. Kalender publik dan notifikasi mengikuti <a href="{{ url_for('public_calendar', _anchor='poster-calendar-title') }}">kalender resmi Lamongan</a>.</p>
         </div>
         <button class="btn btn-primary rounded-pill fw-bold" data-bs-toggle="modal" data-bs-target="#modalCreateEvent">
             <i class="fa-solid fa-plus me-1"></i>Tambah Event Baru
@@ -39,7 +39,9 @@
                                 {% endif %}
                             </td>
                             <td class="py-3 text-end">
-                                <button class="btn btn-sm btn-outline-danger rounded-pill"><i class="fa-solid fa-trash"></i></button>
+                                <form action="{{ url_for('event_delete', id=event.id) }}" method="post" onsubmit="return confirm('Hapus event ini dari database?')">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill">Hapus</button>
+                                </form>
                             </td>
                         </tr>
                         {% else %}

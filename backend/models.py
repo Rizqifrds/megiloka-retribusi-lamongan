@@ -25,14 +25,14 @@ class Destination(db.Model):
     users = db.relationship('User', backref='destination', lazy=True)
     transactions = db.relationship('Transaction', backref='destination', lazy=True)
     pad_recaps = db.relationship('PADReportRecap', backref='destination', lazy=True)
-    hotels = db.relationship('Hotel', backref='destination', lazy=True)
+    hotels = db.relationship('Hotel', backref='destination', lazy=True, cascade='all, delete-orphan')
     events = db.relationship('Event', backref='destination', lazy=True)
     promos = db.relationship('Promo', backref='destination', lazy=True, cascade="all, delete-orphan")
 
     @property
     def active_promo(self):
-        from datetime import date
-        today = date.today()
+        from ai.dates import today_wib
+        today = today_wib()
         # Look for direct promos on destination first
         for p in self.promos:
             if p.valid_from <= today <= p.valid_until:

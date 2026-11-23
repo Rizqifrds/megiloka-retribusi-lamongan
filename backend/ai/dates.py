@@ -43,20 +43,21 @@ def parse_period(message: str, today: date):
         month = 1 if month == 13 else month
         target = date(year, month, int(relative_day[1]))
         return target, target, format_date(target)
-    for word, offset in [('hari ini', 0), ('besok', 1), ('lusa', 2), ('kemarin', -1)]:
+    for word, offset in [('hari ini', 0), (r'(?:besok|esok)', 1), ('lusa', 2), ('kemarin', -1)]:
         if re.search(r'\b' + word + r'\b', msg):
             target = today + timedelta(days=offset)
-            return target, target, word
+            return target, target, 'besok' if offset == 1 else word
     if 'akhir pekan' in msg or 'weekend' in msg:
         start = today + timedelta(days=5-today.weekday())
         if 'depan' in msg:
             start += timedelta(days=7)
         return start, start + timedelta(days=1), 'akhir pekan'
-    if 'minggu ini' in msg or 'minggu depan' in msg:
+    week = re.search(r'\b(?:minggu|pekan) (ini|depan)\b', msg)
+    if week:
         start = today - timedelta(days=today.weekday())
-        if 'minggu depan' in msg:
+        if week[1] == 'depan':
             start += timedelta(days=7)
-        return start, start + timedelta(days=6), 'minggu depan' if 'minggu depan' in msg else 'minggu ini'
+        return start, start + timedelta(days=6), week[0]
     if 'bulan ini' in msg or 'bulan depan' in msg:
         month = today.month + ('bulan depan' in msg)
         year = today.year

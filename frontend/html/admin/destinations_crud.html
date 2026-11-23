@@ -25,6 +25,7 @@
                         <div>
                             <span class="badge bg-light text-primary border font-monospace">{{ dest.code }}</span>
                             <h5 class="fw-bold text-dark mb-0">{{ dest.name }}</h5>
+                            {% if not dest.is_active %}<span class="badge text-bg-secondary">Nonaktif</span>{% endif %}
                             <small class="text-muted"><i class="fa-solid fa-location-dot me-1"></i>{{ dest.location }}</small>
                         </div>
                     </div>
@@ -32,8 +33,8 @@
                         <button class="btn btn-sm btn-outline-secondary rounded-pill me-1" data-bs-toggle="modal" data-bs-target="#modalEditDest{{ dest.id }}">
                             <i class="fa-solid fa-pen"></i>
                         </button>
-                        <form action="{{ url_for('destination_delete', id=dest.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Hapus destinasi ini beserta tiketnya?')">
-                            <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill"><i class="fa-solid fa-trash"></i></button>
+                        <form action="{{ url_for('destination_delete', id=dest.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Hapus destinasi beserta tarif, hotel, dan promo terkait? Jika ada riwayat transaksi atau PAD, destinasi akan dinonaktifkan.')">
+                            <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill" aria-label="Hapus destinasi"><i class="fa-solid fa-trash"></i></button>
                         </form>
                     </div>
                 </div>

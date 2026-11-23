@@ -41,41 +41,41 @@
                 <!-- Guest & Visitor Notification Bell -->
                 <div class="dropdown">
                     <button class="btn btn-outline-light btn-sm position-relative rounded-circle p-2" type="button"
-                        id="guestNotifDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="Notifikasi Agenda & Destinasi Baru">
+                        id="guestNotifDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="Notifikasi Agenda Lamongan">
                         <i class="fa-solid fa-bell text-warning fs-6"></i>
-                        <span id="notifBadgeCount" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-light {% if not guest_notifications %}d-none{% endif %}">
-                            {{ guest_notifications|length }}
+                        <span id="notifBadgeCount" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-light {% if not total_notifications %}d-none{% endif %}">
+                            {{ total_notifications }}
                         </span>
                     </button>
                     <div class="dropdown-menu dropdown-menu-end shadow-lg p-0 notif-dropdown-menu" style="width: 350px; border-radius: 16px; border: 1px solid var(--border-color); overflow: hidden;">
                         <div class="p-3 bg-primary text-white d-flex justify-content-between align-items-center">
                             <span class="fw-bold"><i class="fa-solid fa-bell me-2"></i>Notifikasi Pengunjung</span>
-                            <span id="notifCountHeader" class="badge bg-light text-dark rounded-pill">{{ guest_notifications|length }} Baru</span>
+                            <span id="notifCountHeader" class="badge bg-light text-dark rounded-pill">{{ total_notifications }} Baru</span>
                         </div>
                         <div class="p-2 notif-list-container" style="max-height: 320px; overflow-y: auto;" id="notifListContainer">
                             {% if guest_notifications %}
                                 {% for notif in guest_notifications %}
-                                <a href="{{ notif.url }}" class="dropdown-item p-2 mb-1 rounded-3 text-wrap border-bottom text-decoration-none {% if notif.is_urgent %}bg-warning-subtle border-warning-subtle{% else %}bg-light{% endif %}">
-                                    <div class="d-flex align-items-center justify-content-between mb-1">
-                                        <span class="badge {{ notif.badge_class }} rounded-pill font-monospace" style="font-size: 0.7rem;">{{ notif.badge_label }}</span>
-                                        <small class="text-muted" style="font-size: 0.7rem;">{{ notif.timing_desc }}</small>
-                                    </div>
-                                    <div class="fw-bold text-dark small mb-1">{{ notif.title }}</div>
-                                    <div class="text-muted" style="font-size: 0.72rem;">
-                                        <i class="fa-solid fa-location-dot me-1 text-primary"></i>{{ notif.location }} • {{ notif.date_str }}
-                                    </div>
-                                </a>
+                                <form action="{{ url_for('read_guest_notification', notification_id=notif.id) }}" method="post">
+                                    <button type="submit" class="dropdown-item p-2 mb-1 rounded-3 text-wrap border-bottom {% if not notif.is_read %}bg-primary-subtle{% endif %}">
+                                        <span class="d-flex justify-content-between gap-2 mb-1 small text-muted">
+                                            <span>{{ notif.timing_desc }}</span>
+                                            <span>{{ 'Dibaca' if notif.is_read else 'Baru' }}</span>
+                                        </span>
+                                        <span class="d-block fw-bold small mb-1">{{ notif.title }}</span>
+                                        <span class="d-block small text-muted">{{ notif.date_str }}</span>
+                                    </button>
+                                </form>
                                 {% endfor %}
                             {% else %}
                                 <div class="p-4 text-center text-muted small" id="emptyNotifMsg">
                                     <i class="fa-regular fa-bell-slash fs-3 d-block mb-2 text-secondary"></i>
-                                    Belum ada event atau destinasi baru dalam 30 hari ke depan.
+                                    Belum ada agenda resmi dalam 30 hari ke depan.
                                 </div>
                             {% endif %}
                         </div>
                         <div class="p-2 text-center bg-light border-top">
-                            <a href="{{ url_for('index') }}#spotlightSection" class="btn btn-link btn-sm text-primary fw-bold p-0 text-decoration-none">
-                                Lihat Agenda di Beranda <i class="fa-solid fa-arrow-right ms-1"></i>
+                            <a href="{{ url_for('public_calendar', _anchor='poster-calendar-title') }}" class="btn btn-link btn-sm text-primary fw-bold p-0 text-decoration-none">
+                                Lihat Kalender Resmi <i class="fa-solid fa-arrow-right ms-1"></i>
                             </a>
                         </div>
                     </div>
