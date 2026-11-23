@@ -6,7 +6,6 @@ import io
 import re
 import random
 import secrets
-import string
 import csv
 from datetime import datetime, date, timedelta
 from decimal import Decimal, InvalidOperation
@@ -31,6 +30,7 @@ from destination_catalog import catalog_by_code, seed_booking_rates, upgrade_vis
 from models import db, Destination, User, TicketType, Transaction, Ticket, PADReportRecap, Hotel, Promo, Event
 from utils.qr_generator import create_ticket_qr_payload, verify_qr_payload, generate_qr_image_base64
 from utils.holiday_feed import HolidayFeed
+from utils.whatsapp_agenda import init_whatsapp
 from utils.lamongan_calendar import POSTER_PAGE, POSTER_YEAR, poster_events, poster_months, upcoming_poster_events
 from ai.dates import today_wib
 from ai.concierge import answer_question
@@ -48,6 +48,7 @@ app = Flask(
 app.config.from_object(Config)
 
 db.init_app(app)
+init_whatsapp(app)
 instagram_settings = tuple(app.config[key] for key in (
     'INSTAGRAM_GRAPH_VERSION', 'INSTAGRAM_IG_USER_ID', 'INSTAGRAM_ACCESS_TOKEN',
 ))
@@ -103,11 +104,11 @@ def role_required(*roles):
 
 def generate_invoice_number():
     date_str = datetime.now().strftime('%Y%m%d')
-    random_str = ''.join(random.choices(string.digits, k=4))
+    random_str = secrets.token_hex(12).upper()
     return f"INV-{date_str}-{random_str}"
 
 def generate_ticket_code(dest_code):
-    random_str = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+    random_str = secrets.token_hex(12).upper()
     return f"MGLK-{dest_code}-{random_str}"
 
 # Auto Database Seeder Helper
@@ -319,7 +320,7 @@ TAG_GROUPS = {
 def destinations():
     search_query = request.args.get('q', '').strip()
     groups = map(str.strip, request.args.getlist('group'))
-    selected_groups = list(dict.fromkeys(group for group in groups if group in TAG_GROUPS))
+    selected_group = next((group for group in groups if group in TAG_GROUPS), None)
 
     # Keep existing links that filter on individual categories.
     selected_tags = [
@@ -341,11 +342,10 @@ def destinations():
         )
 
     if selected_tags:
-        selected_groups = []
+        selected_group = None
         query = query.filter(Destination.category.in_(selected_tags))
-    elif selected_groups:
-        categories = [tag for group in selected_groups for tag in TAG_GROUPS[group]['tags']]
-        query = query.filter(Destination.category.in_(categories))
+    elif selected_group:
+        query = query.filter(Destination.category.in_(TAG_GROUPS[selected_group]['tags']))
 
     all_destinations = query.order_by(Destination.name.asc()).all()
 
@@ -353,7 +353,7 @@ def destinations():
         'destinations.html',
         destinations=all_destinations,
         tag_groups=TAG_GROUPS,
-        selected_groups=selected_groups,
+        selected_group=selected_group,
         selected_tags=selected_tags,
         search_query=search_query
     )
@@ -376,10 +376,10 @@ def booking(destination_id):
     today = today_wib()
     if request.method == 'POST':
         visitor_name = request.form.get('visitor_name', '').strip()
-        visitor_phone = request.form.get('visitor_phone', '').strip()
+        visitor_phone = request.form.get('visitor_phone', '').strip() or None
         try:
             visit_date = date.fromisoformat(request.form.get('visit_date', ''))
-            if not visitor_name or len(visitor_name) > 100 or len(visitor_phone) > 30 or visit_date < today:
+            if not visitor_name or len(visitor_name) > 100 or len(visitor_phone or '') > 30 or visit_date < today:
                 raise ValueError
             ticket_items = []
             for ticket_type in ticket_types:
@@ -405,18 +405,22 @@ def booking(destination_id):
             payment_status='pending',
         )
         db.session.add(order)
-        for ticket_type, qty in ticket_items:
-            for _ in range(qty):
-                code = generate_ticket_code(destination.code)
-                payload, _ = create_ticket_qr_payload(code, destination.id, visit_date.isoformat(), app.config['SECRET_KEY'])
-                db.session.add(Ticket(transaction=order, ticket_type=ticket_type, ticket_code=code,
-                                      qr_hash=payload, status='valid', valid_for_date=visit_date))
+        add_order_tickets(order, destination, visit_date, ticket_items)
         db.session.commit()
         return redirect(url_for('ticket_view', invoice_number=order.invoice_number))
 
     return render_template('booking.html', destination=destination, ticket_types=ticket_types,
                            default_date=(today + timedelta(days=1)).isoformat(),
                            earliest_date=today.isoformat())
+
+
+def add_order_tickets(order, destination, visit_date, ticket_items):
+    for ticket_type, qty in ticket_items:
+        for _ in range(qty):
+            code = generate_ticket_code(destination.code)
+            payload, _ = create_ticket_qr_payload(code, destination.id, visit_date.isoformat(), app.config['SECRET_KEY'])
+            db.session.add(Ticket(transaction=order, ticket_type=ticket_type, ticket_code=code,
+                                  qr_hash=payload, status='valid', valid_for_date=visit_date))
 
 
 def record_pad_sale(destination_id, report_date, ticket_count, amount):
@@ -470,64 +474,41 @@ def pos():
     ticket_types = [ticket for ticket in selected_dest.available_tickets if ticket.offered_on(today)] if selected_dest else []
 
     if request.method == 'POST':
-        visitor_name = request.form.get('visitor_name', 'Pengunjung Loket').strip()
+        visitor_name = request.form.get('visitor_name', '').strip() or 'Pengunjung Loket'
+        visitor_phone = request.form.get('visitor_phone', '').strip() or None
         payment_method = request.form.get('payment_method', 'cash')
-        dest_id = int(request.form.get('destination_id'))
+        dest_id = request.form.get('destination_id', type=int)
         dest = Destination.query.filter_by(id=dest_id, is_active=True).with_for_update().first_or_404()
-
         tt_list = [ticket for ticket in dest.available_tickets if ticket.offered_on(today)]
-        if not tt_list:
-            flash('Destinasi ini belum memiliki tiket loket yang aktif.', 'warning')
-            return redirect(url_for('pos'))
-        total_amount = 0
-        ticket_items = []
-
-        for tt in tt_list:
-            qty = int(request.form.get(f'qty_{tt.id}', 0))
-            if qty > 0:
-                item_total = tt.price * qty
-                total_amount += item_total
-                ticket_items.append({'ticket_type': tt, 'quantity': qty})
-
-        if total_amount == 0:
-            flash('Pilih minimal 1 jenis tiket retribusi.', 'warning')
+        try:
+            if len(visitor_name) > 100 or len(visitor_phone or '') > 30 or payment_method not in ('cash', 'qris'):
+                raise ValueError
+            ticket_items = []
+            for ticket_type in tt_list:
+                qty = int(request.form.get(f'qty_{ticket_type.id}', 0))
+                if not 0 <= qty <= 100:
+                    raise ValueError
+                if qty:
+                    ticket_items.append((ticket_type, qty))
+        except ValueError:
+            flash('Periksa nama, kontak, metode pembayaran, dan jumlah tiket.', 'warning')
+            return redirect(url_for('pos', dest_id=dest_id))
+        if not ticket_items:
+            flash('Pilih minimal satu tiket loket yang tersedia.', 'warning')
             return redirect(url_for('pos', dest_id=dest_id))
 
         invoice_num = generate_invoice_number()
         trans = Transaction(
-            invoice_number=invoice_num,
-            destination_id=dest_id,
-            cashier_id=session.get('user_id'),
-            visitor_name=visitor_name,
-            total_amount=total_amount,
-            payment_method=payment_method,
-            payment_status='paid'
+            invoice_number=invoice_num, destination_id=dest_id, cashier_id=session['user_id'],
+            visitor_name=visitor_name, visitor_phone=visitor_phone,
+            total_amount=sum(ticket.price * qty for ticket, qty in ticket_items),
+            payment_method=payment_method, payment_status='paid',
         )
         db.session.add(trans)
-        db.session.flush()
-
-        today_date = today
-        created_tickets = []
-        for item in ticket_items:
-            tt = item['ticket_type']
-            for _ in range(item['quantity']):
-                t_code = generate_ticket_code(dest.code)
-                payload, sec_hash = create_ticket_qr_payload(t_code, dest.id, str(today_date), app.config['SECRET_KEY'])
-                t = Ticket(
-                    transaction_id=trans.id,
-                    ticket_type_id=tt.id,
-                    ticket_code=t_code,
-                    qr_hash=payload,
-                    status='valid',
-                    valid_for_date=today_date
-                )
-                db.session.add(t)
-                created_tickets.append(t)
-
-        record_pad_sale(dest.id, today_date, len(created_tickets), total_amount)
-
+        add_order_tickets(trans, dest, today, ticket_items)
+        record_pad_sale(dest.id, today, sum(qty for _, qty in ticket_items), trans.total_amount)
         db.session.commit()
-        flash(f'Transaksi Loket Berhasil! Invoice: {invoice_num}', 'success')
+        flash(f'Tiket loket diterbitkan. Nomor transaksi: {invoice_num}', 'success')
         return redirect(url_for('ticket_view', invoice_number=invoice_num))
 
     invoice = request.args.get('invoice', '').strip().upper()
@@ -628,10 +609,14 @@ def api_validate_qr():
     if ticket.transaction.invoice_number.startswith('INV-RSV-') and ticket.valid_for_date != today_wib():
         return jsonify(success=False, message='Tiket berlaku pada tanggal kunjungan yang tertera.', status_code='VISIT_DATE'), 200
 
-    # Verification Success - Mark as USED
-    ticket.status = 'used'
-    ticket.scanned_at = datetime.now()
-    ticket.scanned_by_user_id = session.get('user_id')
+    scanned_at = datetime.now()
+    updated = Ticket.query.filter_by(id=ticket.id, status='valid').update({
+        'status': 'used', 'scanned_at': scanned_at, 'scanned_by_user_id': session['user_id'],
+    }, synchronize_session=False)
+    if not updated:
+        db.session.rollback()
+        return jsonify(success=False, message='Tiket sudah dipindai atau statusnya berubah.',
+                       status_code='ALREADY_USED'), 200
     db.session.commit()
 
     return jsonify({

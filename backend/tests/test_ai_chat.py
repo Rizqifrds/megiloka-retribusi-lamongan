@@ -245,6 +245,23 @@ class ChatTests(unittest.TestCase):
             self.assertEqual(PADReportRecap.query.one().total_tickets_sold, 2)
             self.assertIn('ticket-qr-container', self.client.get(result.location).get_data(as_text=True))
 
+    def test_counter_order_saves_optional_contact_and_distinct_tickets(self):
+        dest = Destination.query.one()
+        adults, children = TicketType.query.order_by(TicketType.id).all()
+        with self.client.session_transaction() as sess:
+            sess.update(user_id=1, user_role='admin')
+        response = self.client.post('/pos', data={
+            'destination_id': dest.id, 'visitor_name': 'Rombongan Uji', 'visitor_phone': '08123456789',
+            f'qty_{adults.id}': 2, f'qty_{children.id}': 1,
+        })
+        order = Transaction.query.one()
+        self.assertEqual(order.visitor_phone, '08123456789')
+        self.assertEqual(order.payment_status, 'paid')
+        self.assertEqual(len({ticket.ticket_code for ticket in order.tickets}), 3)
+        self.assertEqual(len({ticket.qr_hash for ticket in order.tickets}), 3)
+        self.assertEqual(PADReportRecap.query.one().total_revenue, 30000)
+        self.assertEqual(self.client.get(response.location).get_data(as_text=True).count('ticket-qr-container'), 3)
+
     def test_retired_ticket_remains_in_database_but_is_not_offered(self):
         dest = Destination.query.one()
         old = TicketType.query.filter_by(name='Dewasa').one()

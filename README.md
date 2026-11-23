@@ -258,3 +258,23 @@ Pengunjung membuat reservasi di MegiLoka dan membayar tunai di loket. Di POS,
 admin atau kasir tujuan mencari nomor reservasi, memeriksa tarif kunjungan,
 lalu mengonfirmasi uang diterima. QR diterbitkan untuk pengunjung dan PAD
 mencatat pembayaran pada hari konfirmasi.
+
+
+## Notifikasi agenda melalui WhatsApp
+
+Isi pengaturan `WHATSAPP_*` dari `.env.example` di file `.env` server.
+`WHATSAPP_NUMBER` adalah nomor bisnis internasional tanpa tanda tambah.
+`WHATSAPP_PHONE_ID` adalah Phone Number ID dari Meta. Gunakan versi Graph API
+yang diaktifkan proyek, access token WhatsApp, App Secret, dan verify token
+yang dibuat khusus untuk webhook.
+
+Daftarkan URL HTTPS publik `/webhooks/whatsapp` di Meta dan pilih field
+`messages`. Gunakan template berbahasa Indonesia yang disetujui Meta. Isi
+template memerlukan dua parameter badan pesan dalam urutan nama agenda
+dan tanggal. Nama template diisi di `WHATSAPP_AGENDA_TEMPLATE`.
+
+Tautan dari lonceng membuka chat untuk mengirim `DAFTAR MEGILOKA` atau
+`STOP MEGILOKA`. Pesan yang ditandatangani Meta mengaktifkan atau menghentikan
+langganan untuk nomor pengirim. Server mengecek agenda H-1 setiap 10 menit
+setelah menerima permintaan pertama. Status `accepted` menandai permintaan
+diterima Meta, dan `unconfirmed` menandai hasil yang belum dapat dikonfirmasi.

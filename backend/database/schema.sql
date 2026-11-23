@@ -153,3 +153,20 @@ CREATE INDEX idx_tickets_code ON `tickets`(`ticket_code`);
 CREATE INDEX idx_tickets_status ON `tickets`(`status`);
 CREATE INDEX idx_trans_date ON `transactions`(`transaction_time`);
 CREATE INDEX idx_pad_date ON `pad_reports_recap`(`report_date`);
+
+
+-- WhatsApp consent and per-event notification delivery state.
+CREATE TABLE IF NOT EXISTS `whatsapp_subscriptions` (
+    `phone` VARCHAR(15) PRIMARY KEY,
+    `active` BOOLEAN NOT NULL,
+    `changed_at` BIGINT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS `whatsapp_agenda_deliveries` (
+    `phone` VARCHAR(15) NOT NULL,
+    `event_key` VARCHAR(64) NOT NULL,
+    `status` VARCHAR(16) NOT NULL,
+    `created_at` DATETIME NOT NULL,
+    PRIMARY KEY (`phone`, `event_key`),
+    FOREIGN KEY (`phone`) REFERENCES `whatsapp_subscriptions`(`phone`) ON DELETE CASCADE
+);

@@ -56,6 +56,7 @@
     <p class="alert alert-info">Tunjukkan nomor reservasi dan bayar tunai di loket. Buka kembali halaman ini setelah petugas mengonfirmasi pembayaran untuk melihat tiket QR.</p>
     {% elif transaction.payment_status == 'paid' %}
     <h5 class="fw-bold text-dark mb-3 no-print"><i class="fa-solid fa-qrcode text-primary me-2"></i>Tiket masuk QR</h5>
+    <p class="text-muted small no-print">Ada {{ ticket_data_list|length }} tiket dalam pesanan ini. Tunjukkan satu kode QR berbeda untuk setiap pengunjung. Simpan atau cetak halaman ini untuk digunakan di pintu masuk.</p>
 
     <div class="row g-4">
         {% for item in ticket_data_list %}

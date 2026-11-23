@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Notifikasi WhatsApp{% endblock %}
+{% block content %}
+<div class="container py-5">
+    <section class="card card-megiloka mx-auto p-4" style="max-width: 36rem;">
+        <h1 class="h3">Notifikasi WhatsApp</h1>
+        <p>MegiLoka mengirim pengingat satu hari sebelum acara dari kalender resmi Lamongan.</p>
+        {% if whatsapp_number %}
+        <p>Untuk berlangganan, kirim pesan <strong>DAFTAR MEGILOKA</strong> dari nomor WhatsApp Anda.</p>
+        <a href="https://wa.me/{{ whatsapp_number }}?text=DAFTAR%20MEGILOKA" class="btn btn-primary rounded-pill">Daftar lewat WhatsApp</a>
+        <a href="https://wa.me/{{ whatsapp_number }}?text=STOP%20MEGILOKA" class="btn btn-outline-primary rounded-pill mt-2">Berhenti berlangganan</a>
+        {% else %}
+        <p class="mb-0">Pendaftaran dibuka setelah nomor WhatsApp resmi MegiLoka terhubung.</p>
+        {% endif %}
+        <p class="small text-muted mt-3 mb-0">Berlangganan bersifat opsional dan terpisah dari pemesanan tiket.</p>
+    </section>
+</div>
+{% endblock %}

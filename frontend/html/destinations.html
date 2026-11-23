@@ -15,9 +15,9 @@
         <div class="col-lg-5">
             <!-- Search Form -->
             <form action="{{ url_for('destinations') }}" method="GET" class="d-flex gap-2">
-                {% for group in selected_groups %}
-                <input type="hidden" name="group" value="{{ group }}">
-                {% endfor %}
+                {% if selected_group %}
+                <input type="hidden" name="group" value="{{ selected_group }}">
+                {% endif %}
                 {% for tag in selected_tags %}
                 <input type="hidden" name="tags" value="{{ tag }}">
                 {% endfor %}
@@ -34,21 +34,20 @@
         </div>
     </div>
 
-    {% set filter_count = (selected_groups or selected_tags)|length %}
+    {% set has_filter = selected_group or selected_tags %}
     <details class="mb-3" id="tagFilterDrawer" style="scroll-margin-top: 7rem;"
-             {% if filter_count or request.args.get('filter') == 'open' %}open{% endif %}>
+             {% if has_filter or request.args.get('filter') == 'open' %}open{% endif %}>
         <summary class="btn btn-outline-primary rounded-pill d-inline-flex align-items-center gap-2">
             <i class="fa-solid fa-sliders" aria-hidden="true"></i>
-            Filter Tag{% if filter_count %} ({{ filter_count }}){% endif %}
+            Filter Tag
             <i class="fa-solid fa-chevron-down small" aria-hidden="true"></i>
         </summary>
         <div class="border rounded-4 bg-white p-3 mt-2">
-            <p class="fw-semibold mb-2" id="tagFilterLabel">Pilih satu atau beberapa kategori</p>
+            <p class="fw-semibold mb-2" id="tagFilterLabel">Pilih satu kategori</p>
             <div class="d-flex flex-wrap gap-2" role="group" aria-labelledby="tagFilterLabel">
                 {% for key, category in tag_groups.items() %}
-                {% set selected = key in selected_groups %}
-                {% set next_groups = selected_groups|reject('equalto', key)|list if selected else selected_groups + [key] %}
-                <a href="{{ url_for('destinations', group=next_groups, q=search_query or None, filter='open', _anchor='tagFilterDrawer') }}"
+                {% set selected = key == selected_group %}
+                <a href="{{ url_for('destinations', group=None if selected else key, q=search_query or None, filter='open', _anchor='tagFilterDrawer') }}"
                    class="btn btn-sm {{ 'btn-primary' if selected else 'btn-outline-primary' }} rounded-pill px-3 py-2"
                    aria-label="{{ 'Hapus' if selected else 'Pilih' }} kategori {{ category.name }}">
                     {% if selected %}<i class="fa-solid fa-check me-1" aria-hidden="true"></i>{% endif %}
@@ -61,7 +60,7 @@
 
     <div class="d-flex flex-wrap align-items-center gap-3 mb-3 small">
         <p class="text-muted mb-0">{{ destinations|length }} destinasi{% if search_query %} untuk “{{ search_query }}”{% endif %}</p>
-        {% if filter_count %}
+        {% if has_filter %}
         <a href="{{ url_for('destinations', q=search_query or None, filter='open', _anchor='tagFilterDrawer') }}">Hapus filter</a>
         {% endif %}
     </div>

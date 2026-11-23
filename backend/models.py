@@ -208,3 +208,20 @@ class Event(db.Model):
     event_date = db.Column(db.Date, nullable=False)
     image_url = db.Column(db.String(255), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.now)
+
+
+class WhatsAppSubscription(db.Model):
+    __tablename__ = 'whatsapp_subscriptions'
+
+    phone = db.Column(db.String(15), primary_key=True)
+    active = db.Column(db.Boolean, nullable=False)
+    changed_at = db.Column(db.BigInteger, nullable=False)
+
+
+class WhatsAppAgendaDelivery(db.Model):
+    __tablename__ = 'whatsapp_agenda_deliveries'
+
+    phone = db.Column(db.String(15), db.ForeignKey('whatsapp_subscriptions.phone', ondelete='CASCADE'), primary_key=True)
+    event_key = db.Column(db.String(64), primary_key=True)
+    status = db.Column(db.String(16), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.now, nullable=False)

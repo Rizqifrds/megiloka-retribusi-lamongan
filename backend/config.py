@@ -17,6 +17,13 @@ class Config:
     INSTAGRAM_GRAPH_VERSION = os.getenv('INSTAGRAM_GRAPH_VERSION', '').strip()
     INSTAGRAM_IG_USER_ID = os.getenv('INSTAGRAM_IG_USER_ID', '').strip()
     INSTAGRAM_ACCESS_TOKEN = os.getenv('INSTAGRAM_ACCESS_TOKEN', '').strip()
+    WHATSAPP_NUMBER = os.getenv('WHATSAPP_NUMBER', '').strip()
+    WHATSAPP_PHONE_ID = os.getenv('WHATSAPP_PHONE_ID', '').strip()
+    WHATSAPP_API_VERSION = os.getenv('WHATSAPP_API_VERSION', '').strip()
+    WHATSAPP_ACCESS_TOKEN = os.getenv('WHATSAPP_ACCESS_TOKEN', '').strip()
+    WHATSAPP_APP_SECRET = os.getenv('WHATSAPP_APP_SECRET', '').strip()
+    WHATSAPP_VERIFY_TOKEN = os.getenv('WHATSAPP_VERIFY_TOKEN', '').strip()
+    WHATSAPP_AGENDA_TEMPLATE = os.getenv('WHATSAPP_AGENDA_TEMPLATE', '').strip()
     
     DB_TYPE = os.getenv('DB_TYPE', 'sqlite').lower()
     DB_HOST = os.getenv('DB_HOST', '127.0.0.1')
