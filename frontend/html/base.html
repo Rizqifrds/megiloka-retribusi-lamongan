@@ -99,14 +99,14 @@
     <!-- Offcanvas Navigation Sidebar (Hamburger Menu Drawer) -->
     <div class="offcanvas offcanvas-end megi-offcanvas border-0 text-white" tabindex="-1" id="megiNavOffcanvas" aria-labelledby="megiNavOffcanvasLabel">
         <div class="offcanvas-header border-bottom border-secondary border-opacity-25 p-3">
-            <div class="d-flex align-items-center" id="megiNavOffcanvasLabel">
-                <i class="fa-solid fa-ticket text-info me-2 fs-4"></i>
+            <div class="d-flex flex-wrap align-items-center gap-2" id="megiNavOffcanvasLabel">
+                <i class="fa-solid fa-ticket text-info fs-4"></i>
                 <span class="fs-5 fw-bold">Megi<span class="text-info">Loka</span></span>
-                <span class="brand-badge ms-2">Megilan</span>
+                <span class="brand-badge">Megilan</span>
             </div>
-            <button type="button" class="btn-close btn-close-white shadow-none" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+            <button type="button" class="btn-close btn-close-white shadow-none flex-shrink-0" data-bs-dismiss="offcanvas" aria-label="Tutup navigasi"></button>
         </div>
-        <div class="offcanvas-body d-flex flex-column gap-3 p-3 p-md-4">
+        <div class="offcanvas-body d-flex flex-column gap-3 p-3">
             <div class="d-flex flex-column gap-2">
                 <div class="text-uppercase text-secondary fw-bold px-2 mb-1" style="font-size: 0.75rem; letter-spacing: 1px;">
                     Navigasi Utama
@@ -130,10 +130,6 @@
                     <span class="btn-text">Kalender Event</span>
                 </a>
 
-                <a href="{{ url_for('destinations') }}" class="offcanvas-nav-btn btn-ticket-highlight">
-                    <span class="btn-icon"><i class="fa-solid fa-ticket"></i></span>
-                    <span class="btn-text">Beli Tiket</span>
-                </a>
                 <button type="button" class="offcanvas-nav-btn text-start" onclick="toggleMegiBot(); bootstrap.Offcanvas.getInstance(document.getElementById('megiNavOffcanvas'))?.hide();">
                     <span class="btn-icon"><i class="fa-solid fa-robot"></i></span>
                     <span class="btn-text">Tanya Megi (AI CS)</span>
@@ -187,37 +183,43 @@
             </div>
 
             <!-- 5. Login / User Profile Section at bottom -->
-            <div class="d-grid gap-2 pt-3 border-top border-secondary border-opacity-25">
+            <div class="offcanvas-account-list d-grid gap-2 pt-3 border-top border-secondary border-opacity-25">
                 {% if signed_in_visitor %}
-                <div class="p-3 rounded-4 border border-secondary border-opacity-25">
-                    <div class="text-white fw-semibold text-break">{{ signed_in_visitor.full_name }}</div>
+                <a href="{{ url_for('visitor_auth.orders') }}"
+                   class="offcanvas-nav-btn {% if request.endpoint == 'visitor_auth.orders' %}active{% endif %}">
+                    <span class="btn-icon"><i class="fa-solid fa-ticket" aria-hidden="true"></i></span>
+                    <span class="btn-text">Riwayat Pemesanan</span>
+                </a>
+                {% endif %}
+                {% if signed_in_visitor or session.get('user_id') %}
+                <div class="p-3 rounded-4 bg-dark bg-opacity-75 border border-secondary border-opacity-25">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="avatar-circle bg-info text-dark fw-bold rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 36px; height: 36px;">
+                            <i class="fa-solid fa-user"></i>
+                        </div>
+                        <div class="offcanvas-account-name">
+                            <div class="fw-bold text-white small">{{ signed_in_visitor.full_name if signed_in_visitor else session.get('full_name') }}</div>
+                            <span class="badge bg-secondary text-uppercase" style="font-size: 0.68rem;">{{ 'Pengunjung' if signed_in_visitor else session.get('user_role') }}</span>
+                        </div>
+                    </div>
+                    {% if signed_in_visitor %}
                     <form action="{{ url_for('visitor_auth.logout') }}" method="post">
                         <input type="hidden" name="csrf_token" value="{{ visitor_csrf() }}">
-                        <button type="submit" class="btn btn-outline-light btn-sm mt-2">Keluar sebagai pengunjung</button>
+                        <button type="submit" class="btn btn-outline-danger btn-sm w-100 rounded-pill mt-1">
+                            <i class="fa-solid fa-right-from-bracket me-1" aria-hidden="true"></i>Keluar
+                        </button>
                     </form>
+                    {% else %}
+                    <a href="{{ url_for('logout') }}" class="btn btn-outline-danger btn-sm w-100 rounded-pill mt-1">
+                        <i class="fa-solid fa-right-from-bracket me-1"></i>Keluar
+                    </a>
+                    {% endif %}
                 </div>
                 {% else %}
                 <a href="{{ url_for('visitor_auth.login') }}" class="offcanvas-nav-btn">
                     <span class="btn-icon"><i class="fa-solid fa-user" aria-hidden="true"></i></span>
                     <span class="btn-text">Masuk Pengunjung</span>
                 </a>
-                {% endif %}
-                {% if session.get('user_id') %}
-                <div class="p-3 rounded-4 bg-dark bg-opacity-75 border border-secondary border-opacity-25">
-                    <div class="d-flex align-items-center gap-2 mb-2">
-                        <div class="avatar-circle bg-info text-dark fw-bold rounded-circle d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
-                            <i class="fa-solid fa-user"></i>
-                        </div>
-                        <div class="overflow-hidden">
-                            <div class="fw-bold text-white small text-truncate">{{ session.get('full_name') }}</div>
-                            <span class="badge bg-secondary text-uppercase" style="font-size: 0.68rem;">{{ session.get('user_role') }}</span>
-                        </div>
-                    </div>
-                    <a href="{{ url_for('logout') }}" class="btn btn-outline-danger btn-sm w-100 rounded-pill mt-1">
-                        <i class="fa-solid fa-right-from-bracket me-1"></i>Keluar
-                    </a>
-                </div>
-                {% else %}
                 <a href="{{ url_for('login') }}" class="offcanvas-nav-btn btn-login-highlight">
                     <span class="btn-icon"><i class="fa-solid fa-user-lock"></i></span>
                     <span class="btn-text">Login Petugas / Admin</span>

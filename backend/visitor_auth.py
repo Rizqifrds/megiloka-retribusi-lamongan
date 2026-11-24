@@ -10,8 +10,9 @@ from time import monotonic
 
 from flask import Blueprint, abort, flash, g, redirect, render_template, request, session, url_for
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import joinedload, selectinload
 
-from models import VisitorAccount, db
+from models import Transaction, VisitorAccount, db
 
 visitor_auth = Blueprint('visitor_auth', __name__, url_prefix='/pengunjung')
 attempts = {}
@@ -51,6 +52,8 @@ def clear_request_visitor():
 
 
 def current_visitor():
+    if session.get('user_id'):
+        return None
     if 'visitor_account' not in g:
         token = session.get('visitor_token')
         g.visitor_account = VisitorAccount.query.filter(
@@ -103,12 +106,14 @@ def visitor_navigation():
 @visitor_auth.route('/login', methods=['GET', 'POST'], endpoint='login')
 @visitor_auth.route('/daftar', methods=['GET', 'POST'], endpoint='register')
 def access():
+    if session.get('user_id'):
+        return redirect(url_for('login'))
     registering = request.endpoint == 'visitor_auth.register'
     destination_id = request.args.get('destination_id', type=int)
     if destination_id is not None and destination_id > 0:
         onward = url_for('booking', destination_id=destination_id)
     else:
-        onward = url_for('destinations')
+        onward = url_for('visitor_auth.orders')
     if current_visitor():
         return redirect(onward)
     needs_phone = False
@@ -160,6 +165,17 @@ def access():
                            needs_phone=needs_phone), {
         'Cache-Control': 'no-store',
     }
+
+
+@visitor_auth.get('/pemesanan')
+def orders():
+    visitor = current_visitor()
+    if visitor is None:
+        return redirect(url_for('visitor_auth.login'))
+    page = Transaction.query.filter_by(visitor_account_id=visitor.id).options(
+        joinedload(Transaction.destination), selectinload(Transaction.tickets),
+    ).order_by(Transaction.transaction_time.desc(), Transaction.id.desc()).paginate(per_page=12)
+    return render_template('visitor_orders.html', orders=page), {'Cache-Control': 'private, no-store'}
 
 
 @visitor_auth.post('/keluar')

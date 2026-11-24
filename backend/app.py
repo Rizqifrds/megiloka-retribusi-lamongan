@@ -1029,8 +1029,17 @@ def public_calendar():
 # AUTHENTICATION
 # ----------------------------
 
+def staff_home(role):
+    return {'admin': 'admin_dashboard', 'gate_keeper': 'validator'}.get(role, 'pos')
+
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    if session.get('user_id'):
+        return redirect(url_for(staff_home(session.get('user_role'))))
+    if current_visitor():
+        return redirect(url_for('visitor_auth.orders'))
+
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '').strip()
@@ -1044,12 +1053,7 @@ def login():
             session['user_destination_id'] = user.destination_id
 
             flash(f'Selamat datang kembali, {user.full_name}!', 'success')
-            if user.role == 'admin':
-                return redirect(url_for('admin_dashboard'))
-            elif user.role == 'gate_keeper':
-                return redirect(url_for('validator'))
-            else:
-                return redirect(url_for('pos'))
+            return redirect(url_for(staff_home(user.role)))
 
         flash('Username atau Password salah.', 'danger')
 

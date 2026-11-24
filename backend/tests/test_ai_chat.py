@@ -249,6 +249,16 @@ class ChatTests(unittest.TestCase):
         order = Transaction.query.one()
         self.assertIsNotNone(order.visitor_account_id)
         self.assertEqual((order.visitor_name, order.visitor_phone), ('Nama Pengunjung', '+6281234567890'))
+        db.session.add(Transaction(invoice_number='INV-LEGACY-ACCOUNT-TEST', destination_id=dest.id,
+                                   visitor_name=order.visitor_name, visitor_phone=order.visitor_phone,
+                                   total_amount=10000, payment_status='paid'))
+        db.session.commit()
+        history = self.client.get('/pengunjung/pemesanan').get_data(as_text=True)
+        self.assertIn(order.invoice_number, history)
+        self.assertIn('Menunggu pembayaran', history)
+        self.assertNotIn('INV-LEGACY-ACCOUNT-TEST', history)
+        guest = app.test_client()
+        self.assertIn('/pengunjung/login', guest.get('/pengunjung/pemesanan').location)
 
     def test_visitor_can_sign_out_and_sign_in_with_full_name(self):
         self.register_visitor('Nama Pengunjung')
@@ -266,6 +276,26 @@ class ChatTests(unittest.TestCase):
             **form, 'password': 'testing-password',
         }).location, f'/booking/{dest.id}')
         self.assertEqual(self.client.get('/admin/dashboard').status_code, 302)
+
+    def test_sidebar_shows_signed_in_account_without_the_other_login(self):
+        logged_out = self.client.get('/').get_data(as_text=True)
+        self.assertIn('Masuk Pengunjung', logged_out)
+        self.assertIn('Login Petugas / Admin', logged_out)
+        self.register_visitor('Pengunjung Uji')
+        visitor = self.client.get('/').get_data(as_text=True)
+        self.assertIn('Riwayat Pemesanan', visitor)
+        self.assertIn('action="/pengunjung/keluar"', visitor)
+        self.assertIn('btn-outline-danger btn-sm w-100 rounded-pill', visitor)
+        self.assertNotIn('Login Petugas / Admin', visitor)
+        self.assertEqual(self.client.get('/login').location, '/pengunjung/pemesanan')
+        with self.client.session_transaction() as sess:
+            sess.update(user_id=1, user_role='admin', full_name='Administrator Uji')
+        staff = self.client.get('/').get_data(as_text=True)
+        self.assertIn('Administrator Uji', staff)
+        self.assertIn('href="/logout"', staff)
+        self.assertNotIn('Masuk Pengunjung', staff)
+        self.assertNotIn('action="/pengunjung/keluar"', staff)
+        self.assertEqual(self.client.get('/pengunjung/login', follow_redirects=True).request.path, '/admin/dashboard')
 
     def test_name_collision_asks_for_phone_only_when_passwords_also_match(self):
         self.register_visitor('Nama Sama')
@@ -304,13 +334,14 @@ class ChatTests(unittest.TestCase):
             path = f'/pos/reservations/{order.invoice_number}/confirm'
             self.assertEqual(self.client.post(path).status_code, 302)
             self.assertEqual(Transaction.query.one().payment_status, 'pending')
-            with self.client.session_transaction() as sess:
+            staff_client = app.test_client()
+            with staff_client.session_transaction() as sess:
                 sess.update(user_id=1, user_role='admin', reservation_csrf='test-token')
-            lookup = self.client.get('/pos', query_string={'invoice': order.invoice_number})
+            lookup = staff_client.get('/pos', query_string={'invoice': order.invoice_number})
             self.assertIn('Konfirmasi uang diterima', lookup.get_data(as_text=True))
-            self.assertEqual(self.client.post(path, data={'csrf_token': 'wrong'}).status_code, 403)
+            self.assertEqual(staff_client.post(path, data={'csrf_token': 'wrong'}).status_code, 403)
             for _ in range(2):
-                self.assertEqual(self.client.post(path, data={'csrf_token': 'test-token'}).status_code, 302)
+                self.assertEqual(staff_client.post(path, data={'csrf_token': 'test-token'}).status_code, 302)
             self.assertEqual(Transaction.query.one().payment_status, 'paid')
             self.assertEqual(Ticket.query.count(), 2)
             self.assertEqual(PADReportRecap.query.one().total_revenue, 24000)
@@ -351,27 +382,31 @@ class ChatTests(unittest.TestCase):
         order = Transaction.query.one()
         self.assertEqual(len(order.tickets), 50)
         self.assertEqual(pad_rows(), [])
-        with self.client.session_transaction() as sess:
+        staff_client = app.test_client()
+        with staff_client.session_transaction() as sess:
             sess.update(user_id=1, user_role='admin', reservation_csrf='test-token')
         with patch('app.today_wib', return_value=date(2026, 11, 24)):
-            self.assertIn('50 tiket', self.client.get('/pos').get_data(as_text=True))
+            self.assertIn('50 tiket', staff_client.get('/pos').get_data(as_text=True))
             invoice = order.invoice_number
             path = f'/pos/reservations/{invoice}/confirm'
             for _ in range(2):
-                self.assertEqual(self.client.post(path, data={'csrf_token': 'test-token'}).status_code, 302)
+                self.assertEqual(staff_client.post(path, data={'csrf_token': 'test-token'}).status_code, 302)
             html = self.client.get(booking.location).get_data(as_text=True)
             self.assertEqual(html.count('ticket-qr-container'), 50)
             self.assertIn('Tiket 50 dari 50', html)
+            history = self.client.get('/pengunjung/pemesanan').get_data(as_text=True)
+            self.assertIn('Lunas', history)
+            self.assertIn(f'href="{booking.location}"', history)
             self.assertEqual(len({ticket.ticket_code for ticket in order.tickets}), 50)
             for code, expected in [(invoice, 'RESERVATION_CODE'), (order.tickets[0].ticket_code, 'SUCCESS'),
                                    (order.tickets[0].qr_hash, 'ALREADY_USED'), (order.tickets[-1].qr_hash, 'SUCCESS')]:
-                scan = self.client.post('/api/validate-qr', json={'qr_payload': code})
+                scan = staff_client.post('/api/validate-qr', json={'qr_payload': code})
                 self.assertEqual(scan.get_json()['status_code'], expected)
             row, = pad_rows()
             self.assertEqual((row.report_date, row.total_tickets_sold, row.total_revenue),
                              (date(2026, 11, 24), 50, 600_000))
-            self.assertIn('600,000', self.client.get('/admin/pad-reports').get_data(as_text=True))
-            csv = self.client.get('/admin/export-pad-csv?start_date=2026-11-24').get_data(as_text=True)
+            self.assertIn('600,000', staff_client.get('/admin/pad-reports').get_data(as_text=True))
+            csv = staff_client.get('/admin/export-pad-csv?start_date=2026-11-24').get_data(as_text=True)
             self.assertIn('2026-11-24,TEST-KTG,Pantai Kutang,50,600000.00', csv)
 
     def test_retired_ticket_remains_in_database_but_is_not_offered(self):

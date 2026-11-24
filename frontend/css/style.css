@@ -646,12 +646,27 @@ footer {
     background: var(--palette-navy) !important;
     border-left: 1px solid rgba(123, 189, 232, 0.2) !important;
     box-shadow: -15px 0 40px rgba(0, 0, 0, 0.5) !important;
-    width: 330px !important;
+    width: min(330px, 100%) !important;
 }
 
 .megi-offcanvas .offcanvas-header {
     background: rgba(0, 29, 57, 0.95);
     backdrop-filter: blur(10px);
+    gap: 0.5rem;
+}
+
+.megi-offcanvas .offcanvas-body {
+    overflow-x: hidden;
+}
+
+.offcanvas-account-list {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.offcanvas-account-name,
+.offcanvas-nav-btn .btn-text {
+    min-width: 0;
+    overflow-wrap: anywhere;
 }
 
 .offcanvas-nav-btn {
@@ -687,7 +702,6 @@ footer {
     background: rgba(10, 65, 116, 0.35);
     border-color: rgba(123, 189, 232, 0.4);
     color: #FFFFFF;
-    transform: translateX(4px);
 }
 
 .offcanvas-nav-btn:hover .btn-icon {
@@ -706,24 +720,6 @@ footer {
 .offcanvas-nav-btn.active .btn-icon {
     background: var(--palette-sky);
     color: var(--palette-navy);
-}
-
-.offcanvas-nav-btn.btn-ticket-highlight {
-    background: linear-gradient(135deg, var(--palette-slate-blue) 0%, var(--palette-deep-blue) 100%);
-    border-color: var(--palette-sky);
-    color: #FFFFFF;
-    box-shadow: 0 4px 14px rgba(73, 118, 159, 0.35);
-}
-
-.offcanvas-nav-btn.btn-ticket-highlight .btn-icon {
-    background: rgba(255, 255, 255, 0.2);
-    color: #FFFFFF;
-}
-
-.offcanvas-nav-btn.btn-ticket-highlight:hover {
-    background: linear-gradient(135deg, var(--palette-deep-blue) 0%, var(--palette-navy) 100%);
-    box-shadow: 0 6px 20px rgba(73, 118, 159, 0.55);
-    transform: translateX(4px);
 }
 
 .offcanvas-nav-btn.btn-login-highlight {
