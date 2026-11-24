@@ -5,7 +5,8 @@ from pathlib import Path
 from sqlalchemy import inspect
 from sqlalchemy.schema import CreateColumn
 
-from models import Destination, TicketType, Transaction, db
+from models import Destination, TicketType, Transaction, VisitorAccount, db
+from visitor_auth import visitor_login_key
 
 CATALOG_PATH = Path(__file__).resolve().parent / 'database' / 'destination_catalog.json'
 VISIT_FIELDS = (
@@ -35,7 +36,7 @@ def upgrade_visit_schema():
     with db.engine.begin() as connection:
         inspector = inspect(connection)
         for model, fields in ((Destination, VISIT_FIELDS), (TicketType, ('is_active', 'weekdays_mask')),
-                              (Transaction, ('paid_at', 'visitor_account_id'))):
+                              (Transaction, ('paid_at', 'visitor_account_id')), (VisitorAccount, ('login_name_key',))):
             table = model.__table__
             existing = {column['name'] for column in inspector.get_columns(table.name)}
             for field in fields:
@@ -52,6 +53,14 @@ def upgrade_visit_schema():
                 'ALTER TABLE transactions ADD CONSTRAINT fk_transaction_visitor '
                 'FOREIGN KEY (visitor_account_id) REFERENCES visitor_accounts(id) ON DELETE SET NULL'
             )
+        accounts = VisitorAccount.__table__
+        missing_keys = connection.execute(db.select(accounts.c.id, accounts.c.full_name).where(
+            accounts.c.login_name_key.is_(None),
+        )).all()
+        for account_id, name in missing_keys:
+            connection.execute(accounts.update().where(accounts.c.id == account_id).values(login_name_key=visitor_login_key(name)))
+        for index in accounts.indexes:
+            index.create(connection, checkfirst=True)
 
 
 def seed_booking_rates(destination):

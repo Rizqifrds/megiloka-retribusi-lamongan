@@ -41,6 +41,10 @@ def token_hash(value):
     return sha256(value.encode()).hexdigest()
 
 
+def visitor_login_key(name):
+    return token_hash(normalize_name(name).casefold())
+
+
 @visitor_auth.before_app_request
 def clear_request_visitor():
     g.pop('visitor_account', None)
@@ -78,16 +82,16 @@ def start_session(account):
     session.pop('visitor_csrf', None)
 
 
-def login_attempt_allowed(phone):
+def login_attempt_allowed(name_key):
     now = monotonic()
     with attempt_lock:
         for key, (_, expiry) in list(attempts.items()):
             if expiry <= now:
                 del attempts[key]
-        count, expiry = attempts.get(phone, (0, now + 600))
+        count, expiry = attempts.get(name_key, (0, now + 600))
         if count >= 8:
             return False
-        attempts[phone] = (count + 1, expiry)
+        attempts[name_key] = (count + 1, expiry)
         return True
 
 
@@ -107,20 +111,23 @@ def access():
         onward = url_for('destinations')
     if current_visitor():
         return redirect(onward)
+    needs_phone = False
     if request.method == 'POST':
         verify_visitor_csrf()
         phone = normalize_phone(request.form.get('phone', ''))
         password = request.form.get('password', '')
         name = normalize_name(request.form.get('full_name', ''))
-        if not phone or not 8 <= len(password) <= 128:
-            flash('Periksa nomor telepon dan kata sandi. Gunakan minimal 8 karakter.', 'danger')
+        if not name or len(name) > 100 or not 8 <= len(password) <= 128:
+            flash('Periksa nama lengkap dan kata sandi. Gunakan minimal 8 karakter.', 'danger')
         elif registering:
-            if not name or len(name) > 100 or not any(character.isalpha() for character in name):
+            if not any(character.isalpha() for character in name):
                 flash('Masukkan nama lengkap yang akan digunakan saat memesan.', 'danger')
+            elif not phone:
+                flash('Masukkan nomor WhatsApp atau telepon yang valid.', 'danger')
             elif password != request.form.get('password_confirmation'):
                 flash('Ulangi kata sandi yang sama.', 'danger')
             else:
-                account = VisitorAccount(full_name=name, phone=phone)
+                account = VisitorAccount(full_name=name, login_name_key=visitor_login_key(name), phone=phone)
                 account.set_password(password)
                 db.session.add(account)
                 try:
@@ -130,17 +137,27 @@ def access():
                     flash('Nomor tersebut sudah terdaftar. Silakan masuk.', 'danger')
                 else:
                     return redirect(onward)
-        elif not login_attempt_allowed(phone):
+        elif not login_attempt_allowed(visitor_login_key(name)):
             flash('Percobaan masuk terlalu banyak. Coba lagi dalam beberapa menit.', 'danger')
         else:
-            account = VisitorAccount.query.filter_by(phone=phone).first()
-            if account and account.check_password(password):
+            key = visitor_login_key(name)
+            matching = [account for account in VisitorAccount.query.filter_by(login_name_key=key)
+                        if account.check_password(password)]
+            needs_phone = len(matching) > 1
+            if needs_phone:
+                matching = [account for account in matching if account.phone == phone]
+            if len(matching) == 1:
+                account, = matching
                 start_session(account)
                 with attempt_lock:
-                    attempts.pop(phone, None)
+                    attempts.pop(key, None)
                 return redirect(onward)
-            flash('Nomor telepon atau kata sandi tidak cocok.', 'danger')
-    return render_template('visitor_access.html', registering=registering, destination_id=destination_id), {
+            if needs_phone:
+                flash('Ada lebih dari satu akun yang cocok. Masukkan nomor telepon akun untuk melanjutkan.', 'warning')
+            else:
+                flash('Nama lengkap atau kata sandi tidak cocok.', 'danger')
+    return render_template('visitor_access.html', registering=registering, destination_id=destination_id,
+                           needs_phone=needs_phone), {
         'Cache-Control': 'no-store',
     }
 

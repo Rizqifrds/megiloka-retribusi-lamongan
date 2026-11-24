@@ -106,7 +106,7 @@
             </div>
             <button type="button" class="btn-close btn-close-white shadow-none" data-bs-dismiss="offcanvas" aria-label="Close"></button>
         </div>
-        <div class="offcanvas-body d-flex flex-column justify-content-between p-3 p-md-4">
+        <div class="offcanvas-body d-flex flex-column gap-3 p-3 p-md-4">
             <div class="d-flex flex-column gap-2">
                 <div class="text-uppercase text-secondary fw-bold px-2 mb-1" style="font-size: 0.75rem; letter-spacing: 1px;">
                     Navigasi Utama
@@ -130,17 +130,14 @@
                     <span class="btn-text">Kalender Event</span>
                 </a>
 
-                <!-- 4. Tanya Megi (AI CS) -->
-                <button type="button" class="offcanvas-nav-btn text-start border-0 w-100 bg-transparent text-info" onclick="toggleMegiBot(); bootstrap.Offcanvas.getInstance(document.getElementById('megiNavOffcanvas'))?.hide();">
-                    <span class="btn-icon"><i class="fa-solid fa-robot"></i></span>
-                    <span class="btn-text">Tanya Megi (AI CS)</span>
-                </button>
-
-                <!-- 5. Beli Tiket -->
                 <a href="{{ url_for('destinations') }}" class="offcanvas-nav-btn btn-ticket-highlight">
                     <span class="btn-icon"><i class="fa-solid fa-ticket"></i></span>
                     <span class="btn-text">Beli Tiket</span>
                 </a>
+                <button type="button" class="offcanvas-nav-btn text-start" onclick="toggleMegiBot(); bootstrap.Offcanvas.getInstance(document.getElementById('megiNavOffcanvas'))?.hide();">
+                    <span class="btn-icon"><i class="fa-solid fa-robot"></i></span>
+                    <span class="btn-text">Tanya Megi (AI CS)</span>
+                </button>
 
                 <!-- Hak Akses Khusus Petugas / Admin jika sedang login -->
                 {% if session.get('user_role') in ['admin', 'cashier'] %}
@@ -190,9 +187,9 @@
             </div>
 
             <!-- 5. Login / User Profile Section at bottom -->
-            <div class="pt-3 border-top border-secondary border-opacity-25 mt-3">
+            <div class="d-grid gap-2 pt-3 border-top border-secondary border-opacity-25">
                 {% if signed_in_visitor %}
-                <div class="p-3 mb-2 rounded-4 border border-secondary border-opacity-25">
+                <div class="p-3 rounded-4 border border-secondary border-opacity-25">
                     <div class="text-white fw-semibold text-break">{{ signed_in_visitor.full_name }}</div>
                     <form action="{{ url_for('visitor_auth.logout') }}" method="post">
                         <input type="hidden" name="csrf_token" value="{{ visitor_csrf() }}">
@@ -206,7 +203,7 @@
                 </a>
                 {% endif %}
                 {% if session.get('user_id') %}
-                <div class="p-3 rounded-4 bg-dark bg-opacity-75 border border-secondary border-opacity-25 mb-2">
+                <div class="p-3 rounded-4 bg-dark bg-opacity-75 border border-secondary border-opacity-25">
                     <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="avatar-circle bg-info text-dark fw-bold rounded-circle d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
                             <i class="fa-solid fa-user"></i>

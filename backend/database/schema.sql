@@ -70,10 +70,12 @@ CREATE TABLE `ticket_types` (
 CREATE TABLE `visitor_accounts` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `full_name` VARCHAR(100) NOT NULL,
+    `login_name_key` VARCHAR(64),
     `phone` VARCHAR(16) NOT NULL UNIQUE,
     `password_hash` VARCHAR(255) NOT NULL,
     `session_token_hash` VARCHAR(64) UNIQUE,
-    `session_expires_at` DATETIME
+    `session_expires_at` DATETIME,
+    INDEX `ix_visitor_accounts_login_name_key` (`login_name_key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE `transactions` (

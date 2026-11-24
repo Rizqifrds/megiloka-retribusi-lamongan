@@ -250,19 +250,42 @@ class ChatTests(unittest.TestCase):
         self.assertIsNotNone(order.visitor_account_id)
         self.assertEqual((order.visitor_name, order.visitor_phone), ('Nama Pengunjung', '+6281234567890'))
 
-    def test_visitor_can_sign_out_and_sign_in_with_registered_phone(self):
+    def test_visitor_can_sign_out_and_sign_in_with_full_name(self):
         self.register_visitor('Nama Pengunjung')
         self.assertEqual(self.client.post('/pengunjung/keluar', data={'csrf_token': 'test-booking'}).status_code, 302)
         dest = Destination.query.one()
         self.assertIn('/pengunjung/login', self.client.get(f'/booking/{dest.id}').location)
         with self.client.session_transaction() as sess:
             sess['visitor_csrf'] = 'test-auth'
-        form = {'phone': '+62 812 3456 7890', 'csrf_token': 'test-auth'}
+        html = self.client.get('/pengunjung/login').get_data(as_text=True)
+        self.assertIn('name="full_name"', html)
+        self.assertNotIn('name="phone"', html)
+        form = {'full_name': '  nama   PENGUNJUNG  ', 'csrf_token': 'test-auth'}
         self.assertEqual(self.client.post('/pengunjung/login', data={**form, 'password': 'kata-sandi-salah'}).status_code, 200)
         self.assertEqual(self.client.post(f'/pengunjung/login?destination_id={dest.id}', data={
             **form, 'password': 'testing-password',
         }).location, f'/booking/{dest.id}')
         self.assertEqual(self.client.get('/admin/dashboard').status_code, 302)
+
+    def test_name_collision_asks_for_phone_only_when_passwords_also_match(self):
+        self.register_visitor('Nama Sama')
+        self.client.post('/pengunjung/keluar', data={'csrf_token': 'test-booking'})
+        with self.client.session_transaction() as sess:
+            sess['visitor_csrf'] = 'test-auth'
+        self.assertEqual(self.client.post('/pengunjung/daftar', data={
+            'full_name': 'Nama Sama', 'phone': '081223344556', 'password': 'testing-password',
+            'password_confirmation': 'testing-password', 'csrf_token': 'test-auth',
+        }).status_code, 302)
+        self.client.get('/')
+        with self.client.session_transaction() as sess:
+            token = sess['visitor_csrf']
+        self.client.post('/pengunjung/keluar', data={'csrf_token': token})
+        with self.client.session_transaction() as sess:
+            sess['visitor_csrf'] = 'test-auth'
+        form = {'full_name': 'Nama Sama', 'password': 'testing-password', 'csrf_token': 'test-auth'}
+        html = self.client.post('/pengunjung/login', data=form).get_data(as_text=True)
+        self.assertIn('name="phone"', html)
+        self.assertEqual(self.client.post('/pengunjung/login', data={**form, 'phone': '081223344556'}).status_code, 302)
 
     def test_reservation_counts_toward_pad_once_cashier_confirms(self):
         dest = Destination.query.one()

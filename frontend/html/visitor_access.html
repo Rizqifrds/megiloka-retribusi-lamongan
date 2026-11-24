@@ -7,18 +7,18 @@
         <p class="text-muted mb-4">{{ 'Gunakan nama dan nomor telepon yang akan dipakai saat memesan tiket.' if registering else 'Masuk untuk melanjutkan pemesanan tiket online.' }}</p>
         <form method="post">
             <input type="hidden" name="csrf_token" value="{{ visitor_csrf() }}">
-            {% if registering %}
             <div class="mb-3">
                 <label for="visitor-full-name" class="form-label">Nama lengkap</label>
-                <input id="visitor-full-name" name="full_name" type="text" class="form-control" autocomplete="name"
+                <input id="visitor-full-name" name="full_name" type="text" class="form-control" autocomplete="{{ 'name' if registering else 'username' }}"
                        maxlength="100" required value="{{ request.form.get('full_name', '') }}">
             </div>
-            {% endif %}
+            {% if registering or needs_phone %}
             <div class="mb-3">
                 <label for="visitor-phone" class="form-label">Nomor WhatsApp atau telepon</label>
-                <input id="visitor-phone" name="phone" type="tel" class="form-control" autocomplete="{{ 'tel' if registering else 'username' }}"
+                <input id="visitor-phone" name="phone" type="tel" class="form-control" autocomplete="tel"
                        maxlength="35" placeholder="Contoh 081234567890" required value="{{ request.form.get('phone', '') }}">
             </div>
+            {% endif %}
             <div class="mb-3">
                 <label for="visitor-password" class="form-label">Kata sandi</label>
                 <input id="visitor-password" name="password" type="password" class="form-control"
