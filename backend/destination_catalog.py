@@ -35,13 +35,23 @@ def upgrade_visit_schema():
     with db.engine.begin() as connection:
         inspector = inspect(connection)
         for model, fields in ((Destination, VISIT_FIELDS), (TicketType, ('is_active', 'weekdays_mask')),
-                              (Transaction, ('paid_at',))):
+                              (Transaction, ('paid_at', 'visitor_account_id'))):
             table = model.__table__
             existing = {column['name'] for column in inspector.get_columns(table.name)}
             for field in fields:
                 if field not in existing:
                     ddl = CreateColumn(table.c[field]).compile(dialect=connection.dialect)
+                    if field == 'visitor_account_id' and connection.dialect.name == 'sqlite':
+                        ddl = f'{ddl} REFERENCES visitor_accounts(id) ON DELETE SET NULL'
                     connection.exec_driver_sql(f'ALTER TABLE {table.name} ADD COLUMN {ddl}')
+        if connection.dialect.name in ('mysql', 'mariadb') and not any(
+            fk['constrained_columns'] == ['visitor_account_id']
+            for fk in inspector.get_foreign_keys('transactions')
+        ):
+            connection.exec_driver_sql(
+                'ALTER TABLE transactions ADD CONSTRAINT fk_transaction_visitor '
+                'FOREIGN KEY (visitor_account_id) REFERENCES visitor_accounts(id) ON DELETE SET NULL'
+            )
 
 
 def seed_booking_rates(destination):

@@ -14,6 +14,7 @@ DROP TABLE IF EXISTS `events`;
 DROP TABLE IF EXISTS `pad_reports_recap`;
 DROP TABLE IF EXISTS `tickets`;
 DROP TABLE IF EXISTS `transactions`;
+DROP TABLE IF EXISTS `visitor_accounts`;
 DROP TABLE IF EXISTS `ticket_types`;
 DROP TABLE IF EXISTS `users`;
 DROP TABLE IF EXISTS `destinations`;
@@ -66,11 +67,21 @@ CREATE TABLE `ticket_types` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 4. Log Transaksi Pembelian Tiket
+CREATE TABLE `visitor_accounts` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `full_name` VARCHAR(100) NOT NULL,
+    `phone` VARCHAR(16) NOT NULL UNIQUE,
+    `password_hash` VARCHAR(255) NOT NULL,
+    `session_token_hash` VARCHAR(64) UNIQUE,
+    `session_expires_at` DATETIME
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE `transactions` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `invoice_number` VARCHAR(50) NOT NULL UNIQUE,
     `destination_id` INT NOT NULL,
     `cashier_id` INT NULL,
+    `visitor_account_id` INT NULL,
     `visitor_name` VARCHAR(100) NOT NULL,
     `visitor_phone` VARCHAR(30),
     `total_amount` DECIMAL(12, 2) NOT NULL,
@@ -79,7 +90,8 @@ CREATE TABLE `transactions` (
     `transaction_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
     `paid_at` DATETIME,
     FOREIGN KEY (`destination_id`) REFERENCES `destinations`(`id`) ON DELETE CASCADE,
-    FOREIGN KEY (`cashier_id`) REFERENCES `users`(`id`) ON DELETE SET NULL
+    FOREIGN KEY (`cashier_id`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`visitor_account_id`) REFERENCES `visitor_accounts`(`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 5. Tabel Detail Tiket QR & Verification Status

@@ -217,12 +217,61 @@ class ChatTests(unittest.TestCase):
         self.assertIn('Masjid Namira Lamongan', html)
         self.assertIn('Gratis', html)
 
+    def register_visitor(self, name):
+        with self.client.session_transaction() as sess:
+            sess['visitor_csrf'] = 'test-auth'
+        response = self.client.post('/pengunjung/daftar', data={
+            'full_name': name, 'phone': '081234567890', 'password': 'testing-password',
+            'password_confirmation': 'testing-password', 'csrf_token': 'test-auth',
+        })
+        self.assertEqual(response.status_code, 302)
+        with self.client.session_transaction() as sess:
+            sess['visitor_csrf'] = 'test-booking'
+
+    def test_booking_requires_matching_logged_in_visitor(self):
+        dest = Destination.query.one()
+        ticket_type = TicketType.query.first()
+        booking_path = f'/booking/{dest.id}'
+        self.assertIn('/pengunjung/login', self.client.get(booking_path).location or '')
+        self.register_visitor('Nama Pengunjung')
+        self.assertEqual(self.client.get(booking_path).status_code, 200)
+        payload = {'visit_date': '2026-11-24', f'qty_{ticket_type.id}': '1', 'csrf_token': 'test-booking'}
+        with patch('app.today_wib', return_value=date(2026, 11, 23)):
+            for name, phone in [('Nama Salah', '081234567890'), ('Nama Pengunjung', '081234567899')]:
+                self.assertEqual(self.client.post(booking_path, data={
+                    **payload, 'visitor_name': name, 'visitor_phone': phone,
+                }).location, booking_path)
+                self.assertEqual(Transaction.query.count(), 0)
+            accepted = self.client.post(booking_path, data={
+                **payload, 'visitor_name': '  nama   pengunjung  ', 'visitor_phone': '+62 812-3456-7890',
+            })
+        self.assertIn('/tickets/', accepted.location)
+        order = Transaction.query.one()
+        self.assertIsNotNone(order.visitor_account_id)
+        self.assertEqual((order.visitor_name, order.visitor_phone), ('Nama Pengunjung', '+6281234567890'))
+
+    def test_visitor_can_sign_out_and_sign_in_with_registered_phone(self):
+        self.register_visitor('Nama Pengunjung')
+        self.assertEqual(self.client.post('/pengunjung/keluar', data={'csrf_token': 'test-booking'}).status_code, 302)
+        dest = Destination.query.one()
+        self.assertIn('/pengunjung/login', self.client.get(f'/booking/{dest.id}').location)
+        with self.client.session_transaction() as sess:
+            sess['visitor_csrf'] = 'test-auth'
+        form = {'phone': '+62 812 3456 7890', 'csrf_token': 'test-auth'}
+        self.assertEqual(self.client.post('/pengunjung/login', data={**form, 'password': 'kata-sandi-salah'}).status_code, 200)
+        self.assertEqual(self.client.post(f'/pengunjung/login?destination_id={dest.id}', data={
+            **form, 'password': 'testing-password',
+        }).location, f'/booking/{dest.id}')
+        self.assertEqual(self.client.get('/admin/dashboard').status_code, 302)
+
     def test_reservation_counts_toward_pad_once_cashier_confirms(self):
         dest = Destination.query.one()
         ticket_type = TicketType.query.filter_by(name='Dewasa').one()
+        self.register_visitor('Pengunjung Uji')
         with patch('app.today_wib', return_value=date(2026, 11, 23)):
             result = self.client.post(f'/booking/{dest.id}', data={
-                'visitor_name': 'Pengunjung Uji', 'visit_date': '2026-11-23', f'qty_{ticket_type.id}': '2',
+                'visitor_name': 'Pengunjung Uji', 'visitor_phone': '081234567890', 'csrf_token': 'test-booking',
+                'visit_date': '2026-11-23', f'qty_{ticket_type.id}': '2',
             })
             self.assertIn('/tickets/', result.location)
             order = Transaction.query.one()
@@ -270,9 +319,11 @@ class ChatTests(unittest.TestCase):
         db.session.add(PADReportRecap(destination_id=dest.id, report_date=date(2026, 11, 23),
                                      total_tickets_sold=999, total_revenue=1_000_000))
         db.session.commit()
+        self.register_visitor('Rombongan Uji')
         with patch('app.today_wib', return_value=date(2026, 11, 23)):
             booking = self.client.post(f'/booking/{dest.id}', data={
-                'visitor_name': 'Rombongan Uji', 'visit_date': '2026-11-24', f'qty_{ticket_type.id}': '50',
+                'visitor_name': 'Rombongan Uji', 'visitor_phone': '081234567890', 'csrf_token': 'test-booking',
+                'visit_date': '2026-11-24', f'qty_{ticket_type.id}': '50',
             })
         order = Transaction.query.one()
         self.assertEqual(len(order.tickets), 50)

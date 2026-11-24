@@ -5,7 +5,7 @@ import secrets
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from sqlalchemy import MetaData, Table, URL, create_engine, func, select
+from sqlalchemy import MetaData, Table, URL, create_engine, func, inspect, select
 
 from ai.dates import today_wib
 from app import app
@@ -23,7 +23,10 @@ def copy_sqlite(path):
     source = create_engine(URL.create('sqlite', database=str(path.resolve())))
     try:
         with source.connect() as connection:
+            legacy_tables = set(inspect(connection).get_table_names())
             for table in tables:
+                if table.name not in legacy_tables:
+                    continue
                 legacy_table = Table(table.name, MetaData(), autoload_with=connection)
                 fields = [legacy_table.c[column.name] for column in table.columns
                           if column.name in legacy_table.c]

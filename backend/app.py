@@ -36,6 +36,7 @@ from utils.lamongan_calendar import POSTER_PAGE, POSTER_YEAR, poster_events, pos
 from ai.dates import WIB, today_wib
 from ai.concierge import answer_question
 from ai.intent_model import ModelUnavailable
+from visitor_auth import current_visitor, normalize_name, normalize_phone, verify_visitor_csrf, visitor_auth
 from utils.ai_service import (
     LAMONGAN_EVENT_TEMPLATES, LAMONGAN_DESTINATION_TEMPLATES,
     resolve_date_target, detect_ai_intent
@@ -49,6 +50,7 @@ app = Flask(
 app.config.from_object(Config)
 
 db.init_app(app)
+app.register_blueprint(visitor_auth)
 init_whatsapp(app)
 instagram_settings = tuple(app.config[key] for key in (
     'INSTAGRAM_GRAPH_VERSION', 'INSTAGRAM_IG_USER_ID', 'INSTAGRAM_ACCESS_TOKEN',
@@ -374,13 +376,21 @@ def booking(destination_id):
     if not ticket_types:
         return redirect(url_for('destination_detail', id=destination_id))
 
+    visitor = current_visitor()
+    if visitor is None:
+        return redirect(url_for('visitor_auth.login', destination_id=destination_id))
+
     today = today_wib()
     if request.method == 'POST':
-        visitor_name = request.form.get('visitor_name', '').strip()
-        visitor_phone = request.form.get('visitor_phone', '').strip() or None
+        verify_visitor_csrf()
+        visitor_name = normalize_name(request.form.get('visitor_name', ''))
+        visitor_phone = normalize_phone(request.form.get('visitor_phone', ''))
+        if visitor_name.casefold() != visitor.full_name.casefold() or visitor_phone != visitor.phone:
+            flash('Nama lengkap dan nomor WhatsApp atau telepon harus sesuai dengan akun pengunjung.', 'danger')
+            return redirect(url_for('booking', destination_id=destination_id))
         try:
             visit_date = date.fromisoformat(request.form.get('visit_date', ''))
-            if not visitor_name or len(visitor_name) > 100 or len(visitor_phone or '') > 30 or visit_date < today:
+            if visit_date < today:
                 raise ValueError
             ticket_items = []
             for ticket_type in ticket_types:
@@ -399,8 +409,9 @@ def booking(destination_id):
         order = Transaction(
             invoice_number=f'INV-RSV-{secrets.token_hex(12).upper()}',
             destination_id=destination.id,
-            visitor_name=visitor_name,
-            visitor_phone=visitor_phone,
+            visitor_account_id=visitor.id,
+            visitor_name=visitor.full_name,
+            visitor_phone=visitor.phone,
             total_amount=sum(ticket.price * qty for ticket, qty in ticket_items),
             payment_method='cash',
             payment_status='pending',

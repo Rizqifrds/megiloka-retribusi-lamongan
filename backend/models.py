@@ -105,6 +105,23 @@ class User(db.Model):
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
+class VisitorAccount(db.Model):
+    __tablename__ = 'visitor_accounts'
+
+    id = db.Column(db.Integer, primary_key=True)
+    full_name = db.Column(db.String(100), nullable=False)
+    phone = db.Column(db.String(16), nullable=False, unique=True)
+    password_hash = db.Column(db.String(255), nullable=False)
+    session_token_hash = db.Column(db.String(64), unique=True)
+    session_expires_at = db.Column(db.DateTime)
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
+
 class TicketType(db.Model):
     __tablename__ = 'ticket_types'
 
@@ -127,6 +144,7 @@ class Transaction(db.Model):
     invoice_number = db.Column(db.String(50), unique=True, nullable=False)
     destination_id = db.Column(db.Integer, db.ForeignKey('destinations.id', ondelete='CASCADE'), nullable=False)
     cashier_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    visitor_account_id = db.Column(db.Integer, db.ForeignKey('visitor_accounts.id', ondelete='SET NULL'), nullable=True)
     visitor_name = db.Column(db.String(100), nullable=False)
     visitor_phone = db.Column(db.String(30), nullable=True)
     total_amount = db.Column(db.Numeric(12, 2), nullable=False)

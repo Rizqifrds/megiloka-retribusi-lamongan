@@ -241,7 +241,7 @@ def answer_question(message: str, today=None, holiday_view=None) -> dict:
     elif intent in ('destination_info', 'ticket_price', 'opening_hours', 'parking'):
         reply, sources = destination_answer(message, today, intent)
     elif intent == 'booking':
-        reply = ('Buka Destinasi Wisata dan pilih tempat dengan tombol Pesan Tiket. Isi nama, pilih tanggal kunjungan dan jumlah tiket, lalu buat reservasi. '
+        reply = ('Buka Destinasi Wisata dan pilih tempat dengan tombol Pesan Tiket. Masuk dengan akun pengunjung, isi nama dan nomor sesuai akun, lalu pilih tanggal kunjungan dan jumlah tiket. '
                  'Tunjukkan nomor reservasi saat bayar tunai di loket. Tiket QR tersedia setelah petugas mengonfirmasi pembayaran.')
         sources = [{'label': 'Pilih destinasi untuk memesan', 'url': '/destinations'}]
     elif intent == 'greeting':

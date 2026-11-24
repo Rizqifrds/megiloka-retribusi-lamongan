@@ -10,12 +10,12 @@
                 <div class="d-flex align-items-center mb-4 pb-3 border-bottom">
                     {% if destination.image_url %}<img src="{{ destination.image_url }}" alt="" class="rounded-3 me-3" style="width: 80px; height: 80px; object-fit: cover;">{% endif %}
                     <div>
-                        <span class="badge bg-light text-primary border mb-1">Pemesanan sebagai tamu</span>
+                        <span class="badge bg-light text-primary border mb-1">Pemesanan pengunjung</span>
                         <h3 class="fw-bold mb-0 text-dark">{{ destination.name }}</h3>
                         <small class="text-muted"><i class="fa-solid fa-location-dot me-1"></i>{{ destination.location }}</small>
                     </div>
                 </div>
-                <p class="small text-muted">Satu nama pemesan cukup untuk satu rombongan. Setiap orang mendapat kode tiket sendiri. Pengunjung juga bisa membeli langsung melalui kasir di loket.</p>
+                <p class="small text-muted">Masukkan nama dan nomor sesuai akun. Satu akun bisa memesan untuk satu rombongan. Setiap pengunjung mendapat kode tiket sendiri.</p>
 
                 {% if destination.active_promo %}
                 <div class="promo-inner-callout mb-4 d-flex align-items-center justify-content-between p-3 rounded-4 shadow-xs">
@@ -35,17 +35,17 @@
                 {% endif %}
 
                 <form action="{{ url_for('booking', destination_id=destination.id) }}" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ visitor_csrf() }}">
                     <!-- Section 1: Data Pengunjung -->
                     <h5 class="fw-bold text-dark mb-3"><i class="fa-solid fa-user text-primary me-2"></i>Data Pengunjung</h5>
                     <div class="row g-3 mb-4">
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold">Nama Lengkap Pengunjung <span class="text-danger">*</span></label>
-                            <input type="text" name="visitor_name" maxlength="100" class="form-control rounded-3" placeholder="Contoh: Rahmat Hidayat" required>
+                            <label for="booking-name" class="form-label fw-semibold">Nama lengkap pemesan</label>
+                            <input id="booking-name" type="text" name="visitor_name" maxlength="100" class="form-control rounded-3" autocomplete="name" required>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold">Nomor WhatsApp / Telp</label>
-                            <input type="tel" name="visitor_phone" maxlength="30" class="form-control rounded-3" placeholder="Contoh: 081234567890">
-                            <small class="text-muted">Opsional, untuk kontak terkait pesanan.</small>
+                            <label for="booking-phone" class="form-label fw-semibold">Nomor WhatsApp atau telepon</label>
+                            <input id="booking-phone" type="tel" name="visitor_phone" maxlength="35" class="form-control rounded-3" autocomplete="tel" required>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Tanggal Kunjungan <span class="text-danger">*</span></label>
