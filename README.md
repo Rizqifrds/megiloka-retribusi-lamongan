@@ -254,10 +254,18 @@ sumber di Kelola Destinasi. Reservasi tersedia untuk destinasi berbayar dengan
 tarif aktif. Jalankan impor katalog untuk menambahkan tarif acuan WBL, Maharani
 Zoo & Goa, dan Museum Islam Indonesia.
 
-Pengunjung membuat reservasi di MegiLoka dan membayar tunai di loket. Di POS,
-admin atau kasir tujuan mencari nomor reservasi, memeriksa tarif kunjungan,
-lalu mengonfirmasi uang diterima. QR diterbitkan untuk pengunjung dan PAD
-mencatat pembayaran pada hari konfirmasi.
+Pengunjung membuat reservasi di MegiLoka dengan metode tunai, QRIS, atau transfer bank.
+Kasir mencocokkan metode dan total pembayaran di POS, lalu mengonfirmasi dana
+diterima. Tiket QR aktif dan PAD mencatat total bersih pada tanggal konfirmasi.
+
+Diskon loyalitas 10% dihitung untuk transaksi lunas ke-5 dan setiap kelipatan 5
+pada akun pengunjung. Admin dapat membuat promo tiket di Kelola Hotel & Promo.
+Pengunjung yang memilih promo mendapat kode referral untuk satu reservasi.
+Kasir memasukkan kode tersebut untuk menambahkan diskon promo pada pembayaran.
+
+Untuk menampilkan rincian pembayaran di POS, isi `PAYMENT_BANK_DETAILS` dengan
+rekening resmi dan `PAYMENT_QRIS_IMAGE` dengan nama gambar QRIS resmi di folder
+`frontend/images`. Pembayaran diperiksa oleh kasir sebelum konfirmasi.
 
 
 ## Notifikasi agenda melalui WhatsApp

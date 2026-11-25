@@ -172,7 +172,7 @@ def destination_answer(message, today, intent):
         promos = Promo.query.filter(Promo.destination_id == d.id, Promo.valid_from <= today, Promo.valid_until >= today).all() if d.admission_status == 'paid' else []
         if promos:
             text += '\n\nPromo destinasi yang tercatat:\n' + '\n'.join(f'• {p.name}, berlaku sampai {format_date(p.valid_until)}.' for p in promos)
-            text += '\nKonfirmasi syarat promo ke pengelola. Harga di atas mengikuti jenis tiket pada formulir pemesanan; diskon belum otomatis diterapkan oleh alur booking saat ini.'
+            text += '\nJika promo tersedia di formulir pemesanan, pilih promo dan tunjukkan kode referral reservasi kepada kasir.'
         text += '\nTarif dapat berubah; periksa kembali sebelum memesan.'
         if d.available_tickets:
             sources.append({'label': 'Lihat pilihan tiket', 'url': f'/booking/{d.id}'})
@@ -242,7 +242,7 @@ def answer_question(message: str, today=None, holiday_view=None) -> dict:
         reply, sources = destination_answer(message, today, intent)
     elif intent == 'booking':
         reply = ('Buka Destinasi Wisata dan pilih tempat dengan tombol Pesan Tiket. Masuk dengan akun pengunjung, isi nama dan nomor sesuai akun, lalu pilih tanggal kunjungan dan jumlah tiket. '
-                 'Tunjukkan nomor reservasi saat bayar tunai di loket. Tiket QR tersedia setelah petugas mengonfirmasi pembayaran.')
+                 'Pilih tunai, QRIS, atau transfer bank. Tunjukkan nomor reservasi dan kode referral jika ada. Tiket QR tersedia setelah petugas mengonfirmasi pembayaran.')
         sources = [{'label': 'Pilih destinasi untuk memesan', 'url': '/destinations'}]
     elif intent == 'greeting':
         reply, sources = 'Halo! Saya Megi, asisten lokal proyek MegiLoka. ' + HELP, []

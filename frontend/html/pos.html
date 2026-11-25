@@ -40,9 +40,31 @@
                 <li>{{ tickets|length }} × {{ ticket_type }}</li>
                 {% endfor %}
             </ul>
-            <p>Tagihan <strong>Rp {{ "{:,.0f}".format(reservation.total_amount).replace(',', '.') }}</strong>. Cocokkan tarif dan tanggal sebelum menerima pembayaran.</p>
-            <form action="{{ url_for('confirm_reservation', invoice_number=reservation.invoice_number) }}" method="post" onsubmit="return confirm('Tunai sudah diterima sesuai tagihan dan tarif kunjungan?')">
+            <p class="mb-2">Metode: <strong>{{ payment_methods[reservation.payment_method] }}</strong></p>
+            <p class="mb-2">Subtotal Rp {{ "{:,.0f}".format(reservation.total_amount).replace(',', '.') }}.
+                {% if loyalty_quote %}Potongan loyalitas Rp {{ "{:,.0f}".format(loyalty_quote).replace(',', '.') }}.{% endif %}
+                <strong>Bayar Rp {{ "{:,.0f}".format(reservation.total_amount - loyalty_quote).replace(',', '.') }}</strong>
+                {% if promo_quote %}sebelum kode referral.{% endif %}
+            </p>
+            {% if promo_quote %}
+            <p class="mb-2">Dengan kode referral yang valid, bayar <strong>Rp {{ "{:,.0f}".format(reservation.total_amount - loyalty_quote - promo_quote).replace(',', '.') }}</strong>.</p>
+            {% endif %}
+            {% if reservation.payment_method == 'qris' and config.PAYMENT_QRIS_IMAGE %}
+            <img src="{{ url_for('static', filename='images/' ~ config.PAYMENT_QRIS_IMAGE) }}" alt="QRIS pembayaran di loket" width="180" class="img-fluid mb-3">
+            {% elif reservation.payment_method == 'transfer' and config.PAYMENT_BANK_DETAILS %}
+            <p class="small mb-3">{{ config.PAYMENT_BANK_DETAILS }}</p>
+            {% endif %}
+            <form action="{{ url_for('confirm_reservation', invoice_number=reservation.invoice_number) }}" method="post" onsubmit="return confirm('Pembayaran sudah diterima sesuai metode dan jumlah akhir?')">
                 <input type="hidden" name="csrf_token" value="{{ session.reservation_csrf }}">
+                <input type="hidden" name="loyalty_quote" value="{{ loyalty_quote }}">
+                <input type="hidden" name="promo_quote" value="{{ promo_quote }}">
+                {% if promo_quote %}
+                <label class="form-label mb-2" for="reservation-promo">Kode referral dari pengunjung (opsional)</label>
+                <input id="reservation-promo" name="promo_code" maxlength="32" class="form-control mb-3" autocomplete="off">
+                {% endif %}
+                {% if reservation.payment_method != 'cash' %}
+                <p class="small text-muted">Periksa mutasi rekening atau notifikasi dari penyedia pembayaran sebelum konfirmasi.</p>
+                {% endif %}
                 <button type="submit" class="btn btn-primary">Konfirmasi uang diterima</button>
             </form>
         </div>
@@ -118,8 +140,7 @@
                     <div class="mb-4">
                         <label class="form-label text-light small">Metode Pembayaran:</label>
                         <select name="payment_method" class="form-select rounded-3">
-                            <option value="cash" selected>💵 Tunai (Cash)</option>
-                            <option value="qris">📱 QRIS Standard</option>
+                            {% for key, label in payment_methods.items() %}<option value="{{ key }}">{{ label }}</option>{% endfor %}
                         </select>
                     </div>
 

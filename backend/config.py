@@ -24,6 +24,8 @@ class Config:
     WHATSAPP_APP_SECRET = os.getenv('WHATSAPP_APP_SECRET', '').strip()
     WHATSAPP_VERIFY_TOKEN = os.getenv('WHATSAPP_VERIFY_TOKEN', '').strip()
     WHATSAPP_AGENDA_TEMPLATE = os.getenv('WHATSAPP_AGENDA_TEMPLATE', '').strip()
+    PAYMENT_QRIS_IMAGE = os.getenv('PAYMENT_QRIS_IMAGE', '').strip()
+    PAYMENT_BANK_DETAILS = os.getenv('PAYMENT_BANK_DETAILS', '').strip()
     
     DB_TYPE = os.getenv('DB_TYPE', 'sqlite').lower()
     DB_HOST = os.getenv('DB_HOST', '127.0.0.1')

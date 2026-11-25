@@ -375,6 +375,54 @@ class ChatTests(unittest.TestCase):
         self.assertEqual(PADReportRecap.query.one().total_revenue, 30000)
         self.assertEqual(self.client.get(response.location).get_data(as_text=True).count('ticket-qr-container'), 3)
 
+    def test_fifth_paid_order_combines_loyalty_and_its_own_referral(self):
+        dest = Destination.query.one()
+        tt = TicketType.query.filter_by(name='Dewasa').one()
+        self.register_visitor('Pembeli Uji')
+        from models import VisitorAccount
+        visitor = VisitorAccount.query.one()
+        db.session.add_all([
+            Transaction(invoice_number=f'INV-UJI-{i}', destination_id=dest.id,
+                        visitor_account_id=visitor.id, visitor_name=visitor.full_name,
+                        total_amount=12000, payment_status='paid') for i in range(4)
+        ])
+        db.session.commit()
+        staff = app.test_client()
+        with staff.session_transaction() as sess:
+            sess.update(user_id=1, user_role='admin', reservation_csrf='test-token')
+        self.assertEqual(staff.post('/admin/promos/create', data={
+            'destination_id': dest.id, 'name': 'Promo uji', 'discount_percent': '20',
+            'valid_from': '2026-11-23', 'valid_until': '2026-11-30',
+        }).status_code, 302)
+        with patch('app.today_wib', return_value=date(2026, 11, 24)):
+            form = {
+                'csrf_token': 'test-booking', 'visitor_name': visitor.full_name, 'visitor_phone': visitor.phone,
+                'visit_date': '2026-11-25', f'qty_{tt.id}': 1,
+            }
+            booking = self.client.post(f'/booking/{dest.id}', data={**form, 'use_promo': '1', 'payment_method': 'qris'})
+            order = Transaction.query.filter_by(payment_status='pending', payment_method='qris').one()
+            self.assertIn(order.promo_code, self.client.get(booking.location).get_data(as_text=True))
+            cashier_view = staff.get('/pos', query_string={'invoice': order.invoice_number}).get_data(as_text=True)
+            self.assertIn('QRIS', cashier_view)
+            self.assertIn('Bayar Rp 10.800', cashier_view)
+            self.assertIn('Rp 8.400', cashier_view)
+            path = f'/pos/reservations/{order.invoice_number}/confirm'
+            quote = {'csrf_token': 'test-token', 'loyalty_quote': '1200', 'promo_quote': '2400'}
+            self.assertEqual(staff.post(path, data={**quote, 'promo_code': 'WRONG'}).status_code, 302)
+            db.session.refresh(order)
+            self.assertEqual(order.payment_status, 'pending')
+            for _ in range(2):
+                self.assertEqual(staff.post(path, data={**quote, 'promo_code': order.promo_code}).location, booking.location)
+            db.session.refresh(order)
+            self.assertEqual((order.total_amount, order.loyalty_discount, order.promo_discount), (8400, 1200, 2400))
+            self.assertEqual(PADReportRecap.query.one().total_revenue, 8400)
+            self.client.post(f'/booking/{dest.id}', data={**form, 'payment_method': 'transfer'})
+            sixth = Transaction.query.filter_by(payment_status='pending', payment_method='transfer').one()
+            result = staff.post(f'/pos/reservations/{sixth.invoice_number}/confirm', data={'csrf_token': 'test-token'})
+            self.assertIn('/tickets/', result.location)
+            db.session.refresh(sixth)
+            self.assertEqual((sixth.payment_status, sixth.total_amount, sixth.loyalty_discount), ('paid', 12000, 0))
+
     def test_fifty_ticket_reservation_shares_one_payment_and_exports_on_paid_date(self):
         from utils.pad_reporting import pad_rows
 

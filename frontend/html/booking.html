@@ -17,25 +17,20 @@
                 </div>
                 <p class="small text-muted">Masukkan nama dan nomor sesuai akun. Satu akun bisa memesan untuk satu rombongan. Setiap pengunjung mendapat kode tiket sendiri.</p>
 
-                {% if destination.active_promo %}
-                <div class="promo-inner-callout mb-4 d-flex align-items-center justify-content-between p-3 rounded-4 shadow-xs">
-                    <div class="d-flex align-items-center gap-3">
-                        <div class="stat-icon icon-accent rounded-circle d-flex align-items-center justify-content-center" style="width:42px;height:42px;">
-                            <i class="fa-solid fa-gift fs-5 text-warning"></i>
-                        </div>
-                        <div>
-                            <div class="fw-bold text-dark">{{ destination.active_promo.name }}</div>
-                            <small class="text-muted">{{ destination.active_promo.description }} • Berlaku s.d {{ destination.active_promo.valid_until.strftime('%d %b %Y') }}</small>
-                        </div>
-                    </div>
-                    {% if destination.active_promo.discount_percent %}
-                    <span class="badge badge-lamongan-accent rounded-pill px-3 py-2 fw-bold">Hemat {{ destination.active_promo.discount_percent|int }}%</span>
-                    {% endif %}
-                </div>
-                {% endif %}
-
                 <form action="{{ url_for('booking', destination_id=destination.id) }}" method="POST">
                     <input type="hidden" name="csrf_token" value="{{ visitor_csrf() }}">
+                    <p class="small text-muted">Diskon {{ loyalty_percent }}% setiap transaksi lunas ke-5, ke-10, dan seterusnya. Akun ini sudah memiliki {{ paid_order_count }} transaksi lunas.</p>
+                    {% if ticket_offer %}
+                    <label class="promo-inner-callout d-block p-3 mb-4">
+                        <input class="form-check-input me-2" type="checkbox" name="use_promo" value="1">
+                        <strong>Pesan dengan promo {{ ticket_offer.name }}</strong>
+                        <span class="d-block small mt-1">
+                            {% if ticket_offer.discount_percent %}Diskon {{ '%g'|format(ticket_offer.discount_percent) }}%
+                            {% elif ticket_offer.discount_amount %}Potongan Rp {{ "{:,.0f}".format(ticket_offer.discount_amount).replace(',', '.') }}
+                            {% endif %} · Berlaku sampai {{ ticket_offer.valid_until.strftime('%d/%m/%Y') }}. Tukarkan kode referral di kasir.
+                        </span>
+                    </label>
+                    {% endif %}
                     <!-- Section 1: Data Pengunjung -->
                     <h5 class="fw-bold text-dark mb-3"><i class="fa-solid fa-user text-primary me-2"></i>Data Pengunjung</h5>
                     <div class="row g-3 mb-4">
@@ -52,9 +47,11 @@
                             <input id="bookingVisitDate" type="date" name="visit_date" min="{{ earliest_date }}" value="{{ default_date }}" class="form-control rounded-3" required>
                         </div>
                         <div class="col-md-6">
-                            <div class="form-label fw-semibold">Metode Pembayaran</div>
-                            <div>Tunai di loket MegiLoka</div>
-                            <small class="text-muted">Simpan nomor reservasi. Tiket QR aktif setelah petugas mengonfirmasi pembayaran.</small>
+                            <label for="booking-payment" class="form-label fw-semibold">Metode pembayaran</label>
+                            <select id="booking-payment" class="form-select rounded-3" name="payment_method">
+                                {% for key, label in payment_methods.items() %}<option value="{{ key }}">{{ label }}</option>{% endfor %}
+                            </select>
+                            <small class="text-muted">Kasir memeriksa total setelah potongan dan mengonfirmasi pembayaran sebelum QR aktif.</small>
                         </div>
                     </div>
 
@@ -96,7 +93,7 @@
                     <!-- Total Price Display & Action Button -->
                     <div class="bg-light p-3 rounded-4 mb-4 d-flex justify-content-between align-items-center border">
                         <div>
-                            <span class="text-muted small">Total reservasi</span>
+                            <span class="text-muted small">Subtotal sebelum potongan</span>
                             <h3 class="fw-bold text-primary mb-0" id="grandTotalDisplay">Rp 0</h3>
                         </div>
                         <button id="bookingSubmit" type="submit" class="btn btn-primary btn-lg rounded-pill px-4 fw-bold shadow">

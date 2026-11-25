@@ -27,10 +27,14 @@ from sqlalchemy.exc import IntegrityError
 
 from config import Config
 from destination_catalog import catalog_by_code, seed_booking_rates, upgrade_visit_schema
-from models import db, Destination, User, TicketType, Transaction, Ticket, PADReportRecap, Hotel, Promo, Event
+from models import db, Destination, User, TicketType, Transaction, Ticket, PADReportRecap, Hotel, Promo, Event, VisitorAccount
 from utils.qr_generator import create_ticket_qr_payload, verify_qr_payload, generate_qr_image_base64
 from utils.holiday_feed import HolidayFeed
 from utils.pad_reporting import pad_rows
+from utils.ticket_pricing import (
+    LOYALTY_PERCENT, PAYMENT_METHODS, available_promo_discount, next_loyalty_discount,
+    paid_order_count, promo_discount, ticket_promo,
+)
 from utils.whatsapp_agenda import init_whatsapp
 from utils.lamongan_calendar import POSTER_PAGE, POSTER_YEAR, poster_events, poster_months, upcoming_poster_events
 from ai.dates import WIB, today_wib
@@ -385,12 +389,13 @@ def booking(destination_id):
         verify_visitor_csrf()
         visitor_name = normalize_name(request.form.get('visitor_name', ''))
         visitor_phone = normalize_phone(request.form.get('visitor_phone', ''))
+        payment_method = request.form.get('payment_method', 'cash')
         if visitor_name.casefold() != visitor.full_name.casefold() or visitor_phone != visitor.phone:
             flash('Nama lengkap dan nomor WhatsApp atau telepon harus sesuai dengan akun pengunjung.', 'danger')
             return redirect(url_for('booking', destination_id=destination_id))
         try:
             visit_date = date.fromisoformat(request.form.get('visit_date', ''))
-            if visit_date < today:
+            if visit_date < today or payment_method not in PAYMENT_METHODS:
                 raise ValueError
             ticket_items = []
             for ticket_type in ticket_types:
@@ -406,22 +411,33 @@ def booking(destination_id):
             flash('Pilih minimal satu tiket untuk tanggal tersebut.', 'warning')
             return redirect(url_for('booking', destination_id=destination_id))
 
+        subtotal = sum(ticket.price * qty for ticket, qty in ticket_items)
+        offer = ticket_promo(destination.id, today, visit_date) if request.form.get('use_promo') else None
+        if request.form.get('use_promo') and offer is None:
+            flash('Promo tidak berlaku untuk tanggal kunjungan yang dipilih. Ubah tanggal atau lanjutkan tanpa promo.', 'warning')
+            return redirect(url_for('booking', destination_id=destination_id))
         order = Transaction(
             invoice_number=f'INV-RSV-{secrets.token_hex(12).upper()}',
             destination_id=destination.id,
             visitor_account_id=visitor.id,
             visitor_name=visitor.full_name,
             visitor_phone=visitor.phone,
-            total_amount=sum(ticket.price * qty for ticket, qty in ticket_items),
-            payment_method='cash',
+            total_amount=subtotal,
+            payment_method=payment_method,
             payment_status='pending',
         )
+        if offer:
+            order.promo_code = f'REF-{secrets.token_hex(6).upper()}'
+            order.promo_offer = promo_discount(offer, subtotal)
+            order.promo_expires_on = offer.valid_until
         db.session.add(order)
         add_order_tickets(order, destination, visit_date, ticket_items)
         db.session.commit()
         return redirect(url_for('ticket_view', invoice_number=order.invoice_number))
 
     return render_template('booking.html', destination=destination, ticket_types=ticket_types,
+                           payment_methods=PAYMENT_METHODS, ticket_offer=ticket_promo(destination.id, today),
+                           paid_order_count=paid_order_count(visitor.id), loyalty_percent=LOYALTY_PERCENT,
                            default_date=(today + timedelta(days=1)).isoformat(),
                            earliest_date=today.isoformat())
 
@@ -461,7 +477,8 @@ def ticket_view(invoice_number):
             'qr_b64': qr_b64
         })
 
-    response = app.make_response(render_template('ticket_view.html', transaction=transaction, ticket_data_list=ticket_data_list))
+    response = app.make_response(render_template('ticket_view.html', transaction=transaction,
+                                                 ticket_data_list=ticket_data_list, payment_methods=PAYMENT_METHODS))
     response.cache_control.no_store = True
     return response
 
@@ -495,7 +512,7 @@ def pos():
         dest = Destination.query.filter_by(id=dest_id, is_active=True).with_for_update().first_or_404()
         tt_list = [ticket for ticket in dest.available_tickets if ticket.offered_on(today)]
         try:
-            if len(visitor_name) > 100 or len(visitor_phone or '') > 30 or payment_method not in ('cash', 'qris'):
+            if len(visitor_name) > 100 or len(visitor_phone or '') > 30 or payment_method not in PAYMENT_METHODS:
                 raise ValueError
             ticket_items = []
             for ticket_type in tt_list:
@@ -527,7 +544,7 @@ def pos():
         return redirect(url_for('ticket_view', invoice_number=invoice_num))
 
     invoice = request.args.get('invoice', '').strip().upper()
-    pending = Transaction.query.filter_by(payment_method='cash', payment_status='pending')
+    pending = Transaction.query.filter_by(payment_status='pending')
     if session['user_role'] == 'cashier':
         pending = pending.filter_by(destination_id=session.get('user_destination_id'))
     reservation = pending.filter_by(invoice_number=invoice).first() if invoice else None
@@ -536,8 +553,11 @@ def pos():
     ).limit(10).all()
     if reservation and 'reservation_csrf' not in session:
         session['reservation_csrf'] = secrets.token_urlsafe(24)
+    loyalty = next_loyalty_discount(reservation.visitor_account_id, reservation.total_amount) if reservation else Decimal(0)
+    promo = available_promo_discount(reservation, today, loyalty) if reservation else Decimal(0)
     return render_template('pos.html', destinations=destinations, selected_dest=selected_dest, ticket_types=ticket_types,
-                           invoice=invoice, reservation=reservation, pending_reservations=pending_reservations)
+                           invoice=invoice, reservation=reservation, pending_reservations=pending_reservations,
+                           payment_methods=PAYMENT_METHODS, loyalty_quote=loyalty, promo_quote=promo)
 
 
 @app.post('/pos/reservations/<invoice_number>/confirm')
@@ -551,11 +571,13 @@ def confirm_reservation(invoice_number):
     provided = request.form.get('csrf_token', '')
     if not expected or not hmac.compare_digest(expected.encode(), provided.encode()):
         abort(403)
-    query = Transaction.query.filter_by(invoice_number=invoice_number, payment_method='cash')
+    query = Transaction.query.filter_by(invoice_number=invoice_number)
     if staff.role == 'cashier':
         query = query.filter_by(destination_id=staff.destination_id)
-    row = query.with_entities(Transaction.destination_id).first_or_404()
+    row = query.with_entities(Transaction.destination_id, Transaction.visitor_account_id).first_or_404()
     dest = Destination.query.filter_by(id=row.destination_id).with_for_update().first_or_404()
+    if row.visitor_account_id:
+        db.session.get(VisitorAccount, row.visitor_account_id, with_for_update=True)
     order = query.with_for_update().first_or_404()
     if order.payment_status == 'paid':
         return redirect(url_for('ticket_view', invoice_number=order.invoice_number))
@@ -567,6 +589,25 @@ def confirm_reservation(invoice_number):
         flash('Pesanan ini sudah tidak dapat dibayar.', 'warning')
         return redirect(url_for('pos', invoice=invoice_number))
 
+    loyalty = next_loyalty_discount(order.visitor_account_id, order.total_amount, lock=True)
+    code = request.form.get('promo_code', '').strip().upper()
+    promo = available_promo_discount(order, today, loyalty) if code else Decimal(0)
+    if code and (code != order.promo_code or not promo):
+        flash('Kode referral tidak cocok dengan reservasi ini atau masa berlakunya sudah habis.', 'warning')
+        return redirect(url_for('pos', invoice=invoice_number))
+    try:
+        correct_quote = Decimal(request.form.get('loyalty_quote', '0')) == loyalty
+        if code:
+            correct_quote = correct_quote and Decimal(request.form.get('promo_quote', '0')) == promo
+    except InvalidOperation:
+        correct_quote = False
+    if not correct_quote:
+        flash('Potongan berubah. Periksa kembali jumlah yang harus dibayar sebelum konfirmasi.', 'warning')
+        return redirect(url_for('pos', invoice=invoice_number))
+
+    order.loyalty_discount = loyalty
+    order.promo_discount = promo
+    order.total_amount -= loyalty + promo
     order.payment_status = 'paid'
     order.cashier_id = staff.id
     order.paid_at = datetime.combine(today, datetime.now(WIB).time())
@@ -961,16 +1002,26 @@ def hotel_create():
 @login_required
 @role_required('admin')
 def promo_create():
-    hotel_id = request.form.get('hotel_id')
-    name = request.form.get('name')
-    discount_percent = request.form.get('discount_percent')
-    valid_from_str = request.form.get('valid_from')
-    valid_until_str = request.form.get('valid_until')
-    
-    valid_from = datetime.strptime(valid_from_str, '%Y-%m-%d').date() if valid_from_str else None
-    valid_until = datetime.strptime(valid_until_str, '%Y-%m-%d').date() if valid_until_str else None
-    
-    p = Promo(hotel_id=hotel_id, name=name, discount_percent=discount_percent, valid_from=valid_from, valid_until=valid_until)
+    hotel_id = request.form.get('hotel_id', type=int)
+    destination_id = request.form.get('destination_id', type=int)
+    name = request.form.get('name', '').strip()
+    try:
+        percent = Decimal(request.form.get('discount_percent', ''))
+        valid_from = date.fromisoformat(request.form.get('valid_from', ''))
+        valid_until = date.fromisoformat(request.form.get('valid_until', ''))
+        if (bool(hotel_id) == bool(destination_id) or not 1 <= len(name) <= 150
+                or not percent.is_finite() or not Decimal('0.01') <= percent <= 100 or valid_until < valid_from):
+            raise ValueError
+    except (ValueError, InvalidOperation):
+        flash('Periksa destinasi atau hotel, nama, diskon, dan tanggal berlaku promo.', 'warning')
+        return redirect(url_for('hotels_crud'))
+    if hotel_id:
+        db.get_or_404(Hotel, hotel_id)
+    else:
+        Destination.query.filter_by(id=destination_id, is_active=True, admission_status='paid').first_or_404()
+
+    p = Promo(hotel_id=hotel_id, destination_id=destination_id, name=name,
+              discount_percent=percent, valid_from=valid_from, valid_until=valid_until)
     db.session.add(p)
     db.session.commit()
     flash('Promo berhasil ditambahkan.', 'success')
