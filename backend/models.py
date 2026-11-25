@@ -150,6 +150,7 @@ class Transaction(db.Model):
     visitor_phone = db.Column(db.String(30), nullable=True)
     total_amount = db.Column(db.Numeric(12, 2), nullable=False)
     loyalty_discount = db.Column(db.Numeric(12, 2), nullable=True)
+    quantity_discount = db.Column(db.Numeric(12, 2), nullable=True)
     promo_discount = db.Column(db.Numeric(12, 2), nullable=True)
     promo_code = db.Column(db.String(32), nullable=True)
     promo_offer = db.Column(db.Numeric(12, 2), nullable=True)

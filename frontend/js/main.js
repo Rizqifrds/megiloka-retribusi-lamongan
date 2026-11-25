@@ -7,8 +7,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const ticketInputs = document.querySelectorAll('.ticket-qty-input');
     if (ticketInputs.length > 0) {
         ticketInputs.forEach(input => {
-            input.addEventListener('change', calculateTotalPrice);
-            input.addEventListener('keyup', calculateTotalPrice);
+            input.addEventListener('input', calculateTotalPrice);
         });
         calculateTotalPrice();
     }
@@ -68,7 +67,8 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 function calculateTotalPrice() {
-    let grandTotal = 0;
+    let subtotalCents = 0;
+    let ticketCount = 0;
     const ticketRows = document.querySelectorAll('.ticket-type-row');
 
     ticketRows.forEach(row => {
@@ -77,12 +77,13 @@ function calculateTotalPrice() {
         const subtotalEl = row.querySelector('.subtotal-amount');
 
         if (qtyInput && !qtyInput.disabled) {
-            const qty = parseInt(qtyInput.value) || 0;
-            const subtotal = price * qty;
-            grandTotal += subtotal;
+            const qty = Math.max(0, Number.parseInt(qtyInput.value, 10) || 0);
+            const lineCents = Math.round(price * 100) * qty;
+            subtotalCents += lineCents;
+            ticketCount += qty;
 
             if (subtotalEl) {
-                subtotalEl.textContent = formatRupiah(subtotal);
+                subtotalEl.textContent = formatRupiah(lineCents / 100);
             }
         }
     });
@@ -90,8 +91,17 @@ function calculateTotalPrice() {
     const grandTotalEl = document.getElementById('grandTotalDisplay');
     const totalAmountInput = document.getElementById('totalAmountInput');
 
-    if (grandTotalEl) {
-        grandTotalEl.textContent = formatRupiah(grandTotal);
+    if (!grandTotalEl) return;
+    const minimum = Number(grandTotalEl.dataset.quantityMinimum);
+    const percent = Number(grandTotalEl.dataset.quantityPercent);
+    const discount = ticketCount >= minimum ? Math.round(subtotalCents * percent / 10000) : 0;
+    const grandTotal = (subtotalCents - discount * 100) / 100;
+    grandTotalEl.textContent = formatRupiah(grandTotal);
+
+    const discountLine = document.getElementById('quantityDiscountLine');
+    if (discountLine) {
+        discountLine.hidden = discount === 0;
+        document.getElementById('quantityDiscountAmount').textContent = formatRupiah(discount);
     }
     if (totalAmountInput) {
         totalAmountInput.value = grandTotal;

@@ -258,8 +258,9 @@ Pengunjung membuat reservasi di MegiLoka dengan metode tunai, QRIS, atau transfe
 Kasir mencocokkan metode dan total pembayaran di POS, lalu mengonfirmasi dana
 diterima. Tiket QR aktif dan PAD mencatat total bersih pada tanggal konfirmasi.
 
-Diskon loyalitas 10% dihitung untuk transaksi lunas ke-5 dan setiap kelipatan 5
-pada akun pengunjung. Admin dapat membuat promo tiket di Kelola Hotel & Promo.
+Diskon rombongan 10% berlaku untuk pembelian minimal lima tiket dalam satu
+pesanan, termasuk pesanan pertama dan pembelian langsung di loket.
+Admin dapat membuat promo tiket di Kelola Hotel & Promo.
 Pengunjung yang memilih promo mendapat kode referral untuk satu reservasi.
 Kasir memasukkan kode tersebut untuk menambahkan diskon promo pada pembayaran.
 

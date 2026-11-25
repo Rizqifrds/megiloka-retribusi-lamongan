@@ -88,6 +88,7 @@ CREATE TABLE `transactions` (
     `visitor_phone` VARCHAR(30),
     `total_amount` DECIMAL(12, 2) NOT NULL,
     `loyalty_discount` DECIMAL(12, 2),
+    `quantity_discount` DECIMAL(12, 2),
     `promo_discount` DECIMAL(12, 2),
     `promo_code` VARCHAR(32),
     `promo_offer` DECIMAL(12, 2),

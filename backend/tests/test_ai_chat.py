@@ -365,28 +365,23 @@ class ChatTests(unittest.TestCase):
             sess.update(user_id=1, user_role='admin')
         response = self.client.post('/pos', data={
             'destination_id': dest.id, 'visitor_name': 'Rombongan Uji', 'visitor_phone': '08123456789',
-            f'qty_{adults.id}': 2, f'qty_{children.id}': 1,
+            f'qty_{adults.id}': 2, f'qty_{children.id}': 3,
         })
         order = Transaction.query.one()
         self.assertEqual(order.visitor_phone, '08123456789')
         self.assertEqual(order.payment_status, 'paid')
-        self.assertEqual(len({ticket.ticket_code for ticket in order.tickets}), 3)
-        self.assertEqual(len({ticket.qr_hash for ticket in order.tickets}), 3)
-        self.assertEqual(PADReportRecap.query.one().total_revenue, 30000)
-        self.assertEqual(self.client.get(response.location).get_data(as_text=True).count('ticket-qr-container'), 3)
+        self.assertEqual(len({ticket.ticket_code for ticket in order.tickets}), 5)
+        self.assertEqual(len({ticket.qr_hash for ticket in order.tickets}), 5)
+        self.assertEqual(order.quantity_discount, 4200)
+        self.assertEqual(PADReportRecap.query.one().total_revenue, 37800)
+        self.assertEqual(self.client.get(response.location).get_data(as_text=True).count('ticket-qr-container'), 5)
 
-    def test_fifth_paid_order_combines_loyalty_and_its_own_referral(self):
+    def test_first_order_of_five_tickets_combines_quantity_discount_and_referral(self):
         dest = Destination.query.one()
         tt = TicketType.query.filter_by(name='Dewasa').one()
         self.register_visitor('Pembeli Uji')
         from models import VisitorAccount
         visitor = VisitorAccount.query.one()
-        db.session.add_all([
-            Transaction(invoice_number=f'INV-UJI-{i}', destination_id=dest.id,
-                        visitor_account_id=visitor.id, visitor_name=visitor.full_name,
-                        total_amount=12000, payment_status='paid') for i in range(4)
-        ])
-        db.session.commit()
         staff = app.test_client()
         with staff.session_transaction() as sess:
             sess.update(user_id=1, user_role='admin', reservation_csrf='test-token')
@@ -397,31 +392,39 @@ class ChatTests(unittest.TestCase):
         with patch('app.today_wib', return_value=date(2026, 11, 24)):
             form = {
                 'csrf_token': 'test-booking', 'visitor_name': visitor.full_name, 'visitor_phone': visitor.phone,
-                'visit_date': '2026-11-25', f'qty_{tt.id}': 1,
+                'visit_date': '2026-11-25',
             }
-            booking = self.client.post(f'/booking/{dest.id}', data={**form, 'use_promo': '1', 'payment_method': 'qris'})
+            booking = self.client.post(f'/booking/{dest.id}', data={
+                **form, f'qty_{tt.id}': 5, 'use_promo': '1', 'payment_method': 'qris',
+            })
             order = Transaction.query.filter_by(payment_status='pending', payment_method='qris').one()
-            self.assertIn(order.promo_code, self.client.get(booking.location).get_data(as_text=True))
+            receipt = self.client.get(booking.location).get_data(as_text=True)
+            self.assertIn(order.promo_code, receipt)
+            self.assertIn('Diskon rombongan Rp 6.000', receipt)
+            self.assertIn('Rp 42.000', receipt)
             cashier_view = staff.get('/pos', query_string={'invoice': order.invoice_number}).get_data(as_text=True)
             self.assertIn('QRIS', cashier_view)
-            self.assertIn('Bayar Rp 10.800', cashier_view)
-            self.assertIn('Rp 8.400', cashier_view)
+            self.assertIn('Bayar Rp 54.000', cashier_view)
+            self.assertIn('Rp 42.000', cashier_view)
             path = f'/pos/reservations/{order.invoice_number}/confirm'
-            quote = {'csrf_token': 'test-token', 'loyalty_quote': '1200', 'promo_quote': '2400'}
+            quote = {'csrf_token': 'test-token', 'quantity_quote': '6000', 'promo_quote': '12000'}
             self.assertEqual(staff.post(path, data={**quote, 'promo_code': 'WRONG'}).status_code, 302)
+            self.assertIn('/pos?', staff.post(path, data={
+                **quote, 'quantity_quote': '0', 'promo_code': order.promo_code,
+            }).location)
             db.session.refresh(order)
             self.assertEqual(order.payment_status, 'pending')
             for _ in range(2):
                 self.assertEqual(staff.post(path, data={**quote, 'promo_code': order.promo_code}).location, booking.location)
             db.session.refresh(order)
-            self.assertEqual((order.total_amount, order.loyalty_discount, order.promo_discount), (8400, 1200, 2400))
-            self.assertEqual(PADReportRecap.query.one().total_revenue, 8400)
-            self.client.post(f'/booking/{dest.id}', data={**form, 'payment_method': 'transfer'})
-            sixth = Transaction.query.filter_by(payment_status='pending', payment_method='transfer').one()
-            result = staff.post(f'/pos/reservations/{sixth.invoice_number}/confirm', data={'csrf_token': 'test-token'})
+            self.assertEqual((order.total_amount, order.quantity_discount, order.promo_discount), (42000, 6000, 12000))
+            self.assertEqual(PADReportRecap.query.one().total_revenue, 42000)
+            self.client.post(f'/booking/{dest.id}', data={**form, f'qty_{tt.id}': 4, 'payment_method': 'transfer'})
+            second = Transaction.query.filter_by(payment_status='pending', payment_method='transfer').one()
+            result = staff.post(f'/pos/reservations/{second.invoice_number}/confirm', data={'csrf_token': 'test-token'})
             self.assertIn('/tickets/', result.location)
-            db.session.refresh(sixth)
-            self.assertEqual((sixth.payment_status, sixth.total_amount, sixth.loyalty_discount), ('paid', 12000, 0))
+            db.session.refresh(second)
+            self.assertEqual((second.payment_status, second.total_amount, second.quantity_discount), ('paid', 48000, 0))
 
     def test_fifty_ticket_reservation_shares_one_payment_and_exports_on_paid_date(self):
         from utils.pad_reporting import pad_rows
@@ -448,7 +451,9 @@ class ChatTests(unittest.TestCase):
             invoice = order.invoice_number
             path = f'/pos/reservations/{invoice}/confirm'
             for _ in range(2):
-                self.assertEqual(staff_client.post(path, data={'csrf_token': 'test-token'}).status_code, 302)
+                self.assertEqual(staff_client.post(path, data={
+                    'csrf_token': 'test-token', 'quantity_quote': '60000',
+                }).location, booking.location)
             html = self.client.get(booking.location).get_data(as_text=True)
             self.assertEqual(html.count('ticket-qr-container'), 50)
             self.assertIn('Tiket 50 dari 50', html)
@@ -462,10 +467,10 @@ class ChatTests(unittest.TestCase):
                 self.assertEqual(scan.get_json()['status_code'], expected)
             row, = pad_rows()
             self.assertEqual((row.report_date, row.total_tickets_sold, row.total_revenue),
-                             (date(2026, 11, 24), 50, 600_000))
-            self.assertIn('600,000', staff_client.get('/admin/pad-reports').get_data(as_text=True))
+                             (date(2026, 11, 24), 50, 540_000))
+            self.assertIn('540,000', staff_client.get('/admin/pad-reports').get_data(as_text=True))
             csv = staff_client.get('/admin/export-pad-csv?start_date=2026-11-24').get_data(as_text=True)
-            self.assertIn('2026-11-24,TEST-KTG,Pantai Kutang,50,600000.00', csv)
+            self.assertIn('2026-11-24,TEST-KTG,Pantai Kutang,50,540000.00', csv)
 
     def test_retired_ticket_remains_in_database_but_is_not_offered(self):
         dest = Destination.query.one()

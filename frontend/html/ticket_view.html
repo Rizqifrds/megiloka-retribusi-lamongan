@@ -45,10 +45,11 @@
                 <span class="badge bg-light text-dark border p-2 rounded-3 mb-2">
                     Metode: {{ payment_methods[transaction.payment_method] }}
                 </span>
-                {% if transaction.payment_status == 'pending' %}<div class="small text-muted">Subtotal sebelum potongan</div>{% endif %}
-                <h3 class="fw-bold text-success mb-0">Rp {{ "{:,.0f}".format(transaction.total_amount).replace(',', '.') }}</h3>
+                {% if transaction.payment_status == 'pending' %}<div class="small text-muted">Perkiraan bayar{% if promo_quote %} dengan kode referral{% endif %}</div>{% endif %}
+                <h3 class="fw-bold text-success mb-0">Rp {{ "{:,.0f}".format(transaction.total_amount - quantity_quote - promo_quote).replace(',', '.') }}</h3>
+                {% if quantity_quote or transaction.quantity_discount %}<div class="small">Diskon rombongan Rp {{ "{:,.0f}".format(quantity_quote or transaction.quantity_discount).replace(',', '.') }}</div>{% endif %}
                 {% if transaction.loyalty_discount %}<div class="small">Potongan loyalitas Rp {{ "{:,.0f}".format(transaction.loyalty_discount).replace(',', '.') }}</div>{% endif %}
-                {% if transaction.promo_discount %}<div class="small">Potongan referral Rp {{ "{:,.0f}".format(transaction.promo_discount).replace(',', '.') }}</div>{% endif %}
+                {% if promo_quote or transaction.promo_discount %}<div class="small">Potongan referral Rp {{ "{:,.0f}".format(promo_quote or transaction.promo_discount).replace(',', '.') }}</div>{% endif %}
                 <small class="text-muted">{{ 'Dibayar (WIB)' if transaction.paid_at else 'Tanggal transaksi' }} · {{ (transaction.paid_at or transaction.transaction_time).strftime('%d-%m-%Y %H:%M') }}</small>
             </div>
         </div>

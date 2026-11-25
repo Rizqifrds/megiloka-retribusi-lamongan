@@ -42,12 +42,12 @@
             </ul>
             <p class="mb-2">Metode: <strong>{{ payment_methods[reservation.payment_method] }}</strong></p>
             <p class="mb-2">Subtotal Rp {{ "{:,.0f}".format(reservation.total_amount).replace(',', '.') }}.
-                {% if loyalty_quote %}Potongan loyalitas Rp {{ "{:,.0f}".format(loyalty_quote).replace(',', '.') }}.{% endif %}
-                <strong>Bayar Rp {{ "{:,.0f}".format(reservation.total_amount - loyalty_quote).replace(',', '.') }}</strong>
+                {% if quantity_quote %}Diskon rombongan Rp {{ "{:,.0f}".format(quantity_quote).replace(',', '.') }}.{% endif %}
+                <strong>Bayar Rp {{ "{:,.0f}".format(reservation.total_amount - quantity_quote).replace(',', '.') }}</strong>
                 {% if promo_quote %}sebelum kode referral.{% endif %}
             </p>
             {% if promo_quote %}
-            <p class="mb-2">Dengan kode referral yang valid, bayar <strong>Rp {{ "{:,.0f}".format(reservation.total_amount - loyalty_quote - promo_quote).replace(',', '.') }}</strong>.</p>
+            <p class="mb-2">Dengan kode referral yang valid, bayar <strong>Rp {{ "{:,.0f}".format(reservation.total_amount - quantity_quote - promo_quote).replace(',', '.') }}</strong>.</p>
             {% endif %}
             {% if reservation.payment_method == 'qris' and config.PAYMENT_QRIS_IMAGE %}
             <img src="{{ url_for('static', filename='images/' ~ config.PAYMENT_QRIS_IMAGE) }}" alt="QRIS pembayaran di loket" width="180" class="img-fluid mb-3">
@@ -56,7 +56,7 @@
             {% endif %}
             <form action="{{ url_for('confirm_reservation', invoice_number=reservation.invoice_number) }}" method="post" onsubmit="return confirm('Pembayaran sudah diterima sesuai metode dan jumlah akhir?')">
                 <input type="hidden" name="csrf_token" value="{{ session.reservation_csrf }}">
-                <input type="hidden" name="loyalty_quote" value="{{ loyalty_quote }}">
+                <input type="hidden" name="quantity_quote" value="{{ quantity_quote }}">
                 <input type="hidden" name="promo_quote" value="{{ promo_quote }}">
                 {% if promo_quote %}
                 <label class="form-label mb-2" for="reservation-promo">Kode referral dari pengunjung (opsional)</label>
@@ -144,9 +144,12 @@
                         </select>
                     </div>
 
-                    <div class="border-top border-secondary pt-3 mb-4">
-                        <span class="text-muted small d-block">TOTAL RETRIBUSI:</span>
-                        <h2 class="fw-bold text-warning mb-0" id="grandTotalDisplay">Rp 0</h2>
+                    <div class="border-top border-secondary pt-3 mb-4" aria-live="polite">
+                        <span class="text-light small d-block">Total yang dibayar</span>
+                        <h2 class="fw-bold text-warning mb-0" id="grandTotalDisplay"
+                            data-quantity-minimum="{{ quantity_minimum }}" data-quantity-percent="{{ quantity_percent }}">Rp 0</h2>
+                        <div id="quantityDiscountLine" class="small text-info" hidden>Diskon rombongan <span id="quantityDiscountAmount"></span></div>
+                        <p class="small text-light mt-1 mb-0">Diskon {{ quantity_percent }}% untuk minimal {{ quantity_minimum }} tiket.</p>
                     </div>
 
                     <button type="submit" class="btn btn-info btn-lg w-100 rounded-pill fw-bold text-dark shadow">

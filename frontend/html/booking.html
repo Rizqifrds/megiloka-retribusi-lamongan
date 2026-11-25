@@ -19,7 +19,7 @@
 
                 <form action="{{ url_for('booking', destination_id=destination.id) }}" method="POST">
                     <input type="hidden" name="csrf_token" value="{{ visitor_csrf() }}">
-                    <p class="small text-muted">Diskon {{ loyalty_percent }}% setiap transaksi lunas ke-5, ke-10, dan seterusnya. Akun ini sudah memiliki {{ paid_order_count }} transaksi lunas.</p>
+                    <p class="small text-muted">Dapatkan diskon {{ quantity_percent }}% saat memesan minimal {{ quantity_minimum }} tiket sekaligus, mulai dari pesanan pertama.</p>
                     {% if ticket_offer %}
                     <label class="promo-inner-callout d-block p-3 mb-4">
                         <input class="form-check-input me-2" type="checkbox" name="use_promo" value="1">
@@ -91,10 +91,12 @@
                     </div>
 
                     <!-- Total Price Display & Action Button -->
-                    <div class="bg-light p-3 rounded-4 mb-4 d-flex justify-content-between align-items-center border">
-                        <div>
-                            <span class="text-muted small">Subtotal sebelum potongan</span>
-                            <h3 class="fw-bold text-primary mb-0" id="grandTotalDisplay">Rp 0</h3>
+                    <div class="bg-light p-3 rounded-4 mb-4 d-flex flex-wrap gap-3 justify-content-between align-items-center border">
+                        <div aria-live="polite">
+                            <span class="text-muted small">Total sebelum kode referral</span>
+                            <h3 class="fw-bold text-primary mb-0" id="grandTotalDisplay"
+                                data-quantity-minimum="{{ quantity_minimum }}" data-quantity-percent="{{ quantity_percent }}">Rp 0</h3>
+                            <div id="quantityDiscountLine" class="small text-success" hidden>Diskon rombongan <span id="quantityDiscountAmount"></span></div>
                         </div>
                         <button id="bookingSubmit" type="submit" class="btn btn-primary btn-lg rounded-pill px-4 fw-bold shadow">
                             <i class="fa-solid fa-ticket me-2"></i>Buat Reservasi

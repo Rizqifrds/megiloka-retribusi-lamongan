@@ -36,7 +36,7 @@ def upgrade_visit_schema():
     with db.engine.begin() as connection:
         inspector = inspect(connection)
         for model, fields in ((Destination, VISIT_FIELDS), (TicketType, ('is_active', 'weekdays_mask')),
-                              (Transaction, ('paid_at', 'visitor_account_id', 'loyalty_discount', 'promo_discount',
+                              (Transaction, ('paid_at', 'visitor_account_id', 'loyalty_discount', 'quantity_discount', 'promo_discount',
                                              'promo_code', 'promo_offer', 'promo_expires_on')),
                               (VisitorAccount, ('login_name_key',))):
             table = model.__table__
