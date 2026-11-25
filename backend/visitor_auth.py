@@ -113,7 +113,7 @@ def access():
     if destination_id is not None and destination_id > 0:
         onward = url_for('booking', destination_id=destination_id)
     else:
-        onward = url_for('visitor_auth.orders')
+        onward = url_for('index')
     if current_visitor():
         return redirect(onward)
     needs_phone = False

@@ -277,6 +277,16 @@ class ChatTests(unittest.TestCase):
         }).location, f'/booking/{dest.id}')
         self.assertEqual(self.client.get('/admin/dashboard').status_code, 302)
 
+    def test_visitor_login_without_destination_opens_home(self):
+        self.register_visitor('Nama Pengunjung')
+        self.client.post('/pengunjung/keluar', data={'csrf_token': 'test-booking'})
+        with self.client.session_transaction() as sess:
+            sess['visitor_csrf'] = 'test-auth'
+        response = self.client.post('/pengunjung/login', data={
+            'full_name': 'Nama Pengunjung', 'password': 'testing-password', 'csrf_token': 'test-auth',
+        })
+        self.assertEqual(response.location, '/')
+
     def test_sidebar_shows_signed_in_account_without_the_other_login(self):
         logged_out = self.client.get('/').get_data(as_text=True)
         self.assertIn('Masuk Pengunjung', logged_out)
