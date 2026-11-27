@@ -1,0 +1,49 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Login Petugas - MegiLoka{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-5">
+            <div class="card card-megiloka border-0 p-4 shadow-sm">
+                <div class="text-center mb-4">
+                    <div class="stat-icon mx-auto mb-3" style="width: 60px; height: 60px; font-size: 2rem;">
+                        <i class="fa-solid fa-lock text-primary"></i>
+                    </div>
+                    <h3 class="fw-bold text-dark mb-1">Login Petugas MegiLoka</h3>
+                    <p class="text-muted small">Dinas Pariwisata & Kebudayaan Kab. Lamongan</p>
+                </div>
+
+                <form action="{{ url_for('login') }}" method="POST">
+                    <div class="mb-3">
+                        <label for="login-username" class="form-label fw-semibold">Username <span
+                                class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fa-solid fa-user text-muted"></i></span>
+                            <input id="login-username" type="text" name="username" autocomplete="username"
+                                class="form-control rounded-end" placeholder="Masukkan username" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="login-password" class="form-label fw-semibold">Password <span
+                                class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fa-solid fa-key text-muted"></i></span>
+                            <input id="login-password" type="password" name="password" autocomplete="current-password"
+                                class="form-control rounded-end" placeholder="Masukkan password" required>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-lg w-100 rounded-pill fw-bold shadow mb-3">
+                        <i class="fa-solid fa-right-to-bracket me-2"></i>Masuk ke Sistem
+                    </button>
+                </form>
+
+                <p class="text-center text-muted small mb-0">Gunakan akun petugas yang diberikan kepada Anda.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

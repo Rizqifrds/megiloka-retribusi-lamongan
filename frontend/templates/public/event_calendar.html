@@ -1,0 +1,78 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Kalender Event Wisata - MegiLoka{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="text-center mb-5">
+        <h1 class="fw-bold text-dark display-5 mb-3">Kalender Event Pariwisata</h1>
+        <p class="lead text-muted max-w-2xl mx-auto">Jangan lewatkan berbagai acara menarik dan festival budaya yang akan diselenggarakan di Kabupaten Lamongan.</p>
+    </div>
+
+    {% if district_events %}
+    <section class="mb-4" aria-labelledby="district-events-title">
+        <h2 id="district-events-title" class="h4 fw-bold">Pengumuman terbaru Disbudporapar</h2>
+        <div class="row g-3">
+            {% for item in district_events %}
+            <div class="col-md-6">
+                <article class="card card-megiloka h-100 p-3">
+                    <h3 class="h5">{{ item.name }}</h3>
+                    <p class="text-muted mb-2">
+                        <time datetime="{{ item.start }}">{{ item.start.split('-') | reverse | join('/') }}</time>
+                        {% if item.end != item.start %}– <time datetime="{{ item.end }}">{{ item.end.split('-') | reverse | join('/') }}</time>{% endif %}
+                    </p>
+                    <a href="{{ item.url }}">Lihat pengumuman resmi</a>
+                </article>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    <section class="card card-megiloka p-3 p-md-4 mb-5" aria-labelledby="poster-calendar-title">
+        <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-2">
+            <h2 id="poster-calendar-title" class="h4 fw-bold mb-0">Kalender resmi Lamongan {{ poster_year }}</h2>
+            <a href="{{ poster_source }}">Lihat poster resmi</a>
+        </div>
+        <p class="text-muted">Jadwal pada poster bersifat tentatif. Konfirmasi ke penyelenggara sebelum berkunjung.</p>
+        {% if poster_page_updated %}
+        <p class="small text-primary">Halaman sumber telah diperbarui. Periksa poster resmi untuk jadwal terbaru.</p>
+        {% endif %}
+        {% for month in poster_months %}
+        <details class="border-top py-2"{% if month.open %} open{% endif %}>
+            <summary class="fw-semibold py-2">{{ month.name }} {{ poster_year }}</summary>
+            <ul class="list-group list-group-flush">
+                {% for day, name in month.entries %}
+                <li id="poster-event-{{ month.number }}-{{ loop.index }}" class="list-group-item px-0 d-flex flex-wrap justify-content-between gap-1" style="scroll-margin-top: 6rem;">
+                    <span class="fw-semibold">{{ name }}</span>
+                    <span class="text-muted small">
+                        {% if day %}{{ day }} {{ month.name }}{% else %}Tanggal belum tercantum{% endif %}
+                    </span>
+                </li>
+                {% endfor %}
+            </ul>
+        </details>
+        {% endfor %}
+    </section>
+
+    {% if instagram_events %}
+    <section class="mb-4" aria-labelledby="wbl-events-title">
+        <h2 id="wbl-events-title" class="h4 fw-bold">Event dari Instagram WBL</h2>
+        <div class="row g-3">
+            {% for item in instagram_events %}
+            <div class="col-md-6">
+                <article class="card card-megiloka h-100 p-3">
+                    <h3 class="h5">{{ item.name }}</h3>
+                    <p class="text-muted mb-2">
+                        <time datetime="{{ item.start }}">{{ item.start.split('-') | reverse | join('/') }}</time>
+                        {% if item.end != item.start %}– <time datetime="{{ item.end }}">{{ item.end.split('-') | reverse | join('/') }}</time>{% endif %}
+                    </p>
+                    <a href="{{ item.url }}">Lihat posting asli di Instagram</a>
+                </article>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+</div>
+{% endblock %}

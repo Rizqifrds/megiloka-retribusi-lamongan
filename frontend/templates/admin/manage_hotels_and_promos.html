@@ -1,0 +1,191 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Kelola Hotel & Promo - MegiLoka{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4 px-lg-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold text-dark mb-1"><i class="fa-solid fa-hotel text-primary me-2"></i>Kelola Hotel & Promo</h2>
+            <p class="text-muted mb-0">Tambah dan kelola daftar hotel beserta penawaran promonya.</p>
+        </div>
+        <button class="btn btn-primary rounded-pill fw-bold" data-bs-toggle="modal" data-bs-target="#modalCreateHotel">
+            <i class="fa-solid fa-plus me-1"></i>Tambah Hotel Baru
+        </button>
+    </div>
+
+    <div class="row g-4">
+        {% for hotel in hotels %}
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white h-100">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div>
+                        <h5 class="fw-bold text-dark mb-0">{{ hotel.name }}</h5>
+                        <small class="text-muted"><i class="fa-solid fa-location-dot me-1"></i>{{ hotel.location }}</small><br>
+                        <small class="text-muted">Dekat dengan: <strong>{{ hotel.destination.name }}</strong></small>
+                    </div>
+                    <form action="{{ url_for('hotel_delete', id=hotel.id) }}" method="post" onsubmit="return confirm('Hapus hotel beserta promo yang terhubung?')">
+                        <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill">Hapus Hotel</button>
+                    </form>
+                </div>
+                
+                <div class="border-top pt-3 mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="fw-bold small text-dark">Daftar Promo Tersedia:</span>
+                        <button class="btn btn-sm btn-link text-decoration-none p-0 text-primary fw-bold" data-bs-toggle="modal" data-bs-target="#modalAddPromo{{ hotel.id }}">
+                            + Tambah Promo
+                        </button>
+                    </div>
+                    <ul class="list-group list-group-flush">
+                        {% for promo in hotel.promos %}
+                        <li class="list-group-item px-0 d-flex justify-content-between align-items-center bg-transparent py-1">
+                            <div>
+                                <i class="fa-solid fa-tag text-warning me-2"></i><span class="small fw-bold text-dark">{{ promo.name }}</span>
+                                <div class="text-muted" style="font-size: 0.75rem;">Berlaku: {{ promo.valid_from }} s/d {{ promo.valid_until }}</div>
+                            </div>
+                            <form action="{{ url_for('promo_delete', id=promo.id) }}" method="post" onsubmit="return confirm('Hapus promo ini dari database?')">
+                                <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill">Hapus Promo</button>
+                            </form>
+                        </li>
+                        {% else %}
+                        <li class="list-group-item px-0 text-muted small bg-transparent text-center border-0">Belum ada promo.</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Add Promo -->
+        <div class="modal fade" id="modalAddPromo{{ hotel.id }}" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content rounded-4 border-0 shadow">
+                    <form action="{{ url_for('promo_create') }}" method="POST">
+                        <input type="hidden" name="hotel_id" value="{{ hotel.id }}">
+                        <div class="modal-header border-bottom-0 pb-0">
+                            <h5 class="modal-title fw-bold text-dark">Tambah Promo untuk {{ hotel.name }}</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold text-muted">Nama Promo</label>
+                                <input type="text" name="name" class="form-control rounded-3" required>
+                            </div>
+                            <div class="row g-2 mb-3">
+                                <div class="col-6">
+                                    <label class="form-label small fw-bold text-muted">Diskon Persen (%)</label>
+                                    <input type="number" name="discount_percent" class="form-control rounded-3" min="0.01" max="100" step="0.01" required>
+                                </div>
+                            </div>
+                            <div class="row g-2 mb-3">
+                                <div class="col-6">
+                                    <label class="form-label small fw-bold text-muted">Berlaku Mulai</label>
+                                    <input type="date" name="valid_from" class="form-control rounded-3" required>
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small fw-bold text-muted">Berlaku Sampai</label>
+                                    <input type="date" name="valid_until" class="form-control rounded-3" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer border-top-0 pt-0">
+                            <button type="submit" class="btn btn-primary rounded-pill w-100 fw-bold">Simpan Promo</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <p class="text-muted">Belum ada hotel.</p>
+        {% endfor %}
+    </div>
+
+    <section class="card border-0 shadow-sm rounded-4 bg-white p-4 mt-4">
+        <h3 class="h5 fw-bold">Promo tiket destinasi</h3>
+        <form action="{{ url_for('promo_create') }}" method="post" class="row g-2 align-items-end mb-3">
+            <label class="col-md-4 form-label mb-0">Destinasi
+                <select name="destination_id" class="form-select" required>
+                    <option value="">Pilih destinasi berbayar</option>
+                    {% for destination in destinations if destination.admission_status == 'paid' %}
+                    <option value="{{ destination.id }}">{{ destination.name }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label class="col-md-4 form-label mb-0">Nama promo
+                <input name="name" class="form-control" maxlength="150" required>
+            </label>
+            <label class="col-md-4 form-label mb-0">Diskon (%)
+                <input name="discount_percent" type="number" min="0.01" max="100" step="0.01" class="form-control" required>
+            </label>
+            <label class="col-md-4 form-label mb-0">Mulai
+                <input name="valid_from" type="date" class="form-control" required>
+            </label>
+            <label class="col-md-4 form-label mb-0">Sampai
+                <input name="valid_until" type="date" class="form-control" required>
+            </label>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-primary rounded-pill">Tambah promo tiket</button>
+            </div>
+        </form>
+        <ul class="list-group list-group-flush">
+            {% for promo in direct_promos %}
+            <li class="list-group-item px-0 d-flex justify-content-between align-items-center gap-3">
+                <div>
+                    <strong>{{ promo.name }}</strong>
+                    <div class="small text-muted">
+                        {% if promo.destination %}{{ promo.destination.name }} · {% endif %}
+                        {{ promo.valid_from }} s/d {{ promo.valid_until }}
+                        {% if promo.discount_percent %} · {{ '%g'|format(promo.discount_percent) }}%{% endif %}
+                    </div>
+                </div>
+                <form action="{{ url_for('promo_delete', id=promo.id) }}" method="post" onsubmit="return confirm('Hapus promo ini dari database?')">
+                    <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill">Hapus Promo</button>
+                </form>
+            </li>
+            {% else %}
+            <li class="list-group-item px-0 text-muted">Belum ada promo destinasi.</li>
+            {% endfor %}
+        </ul>
+    </section>
+
+    <!-- Modal Create Hotel -->
+    <div class="modal fade" id="modalCreateHotel" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow">
+                <form action="{{ url_for('hotel_create') }}" method="POST">
+                    <div class="modal-header border-bottom-0 pb-0">
+                        <h5 class="modal-title fw-bold text-dark">Tambah Hotel Baru</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold text-muted">Nama Hotel</label>
+                                <input type="text" name="name" class="form-control rounded-3" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold text-muted">Destinasi Terdekat</label>
+                                <select name="destination_id" class="form-select rounded-3" required>
+                                    {% for d in destinations %}
+                                    <option value="{{ d.id }}">{{ d.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label small fw-bold text-muted">Alamat/Lokasi</label>
+                                <input type="text" name="location" class="form-control rounded-3" required>
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label small fw-bold text-muted">Deskripsi Singkat</label>
+                                <textarea name="description" class="form-control rounded-3" rows="3"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-top-0 pt-0">
+                        <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold">Simpan Hotel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

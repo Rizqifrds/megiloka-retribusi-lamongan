@@ -1,0 +1,114 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}E-Ticket MegiLoka - {{ transaction.invoice_number }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Top Action Bar (No Print) -->
+    <div class="d-flex justify-content-between align-items-center mb-4 no-print">
+        <div>
+            {% if transaction.payment_status == 'paid' %}
+            <span class="badge bg-success px-3 py-2 rounded-pill">Pembayaran diterima</span>
+            <h3 class="fw-bold text-dark mb-0">E-Ticket MegiLoka</h3>
+            {% else %}
+            <span class="badge text-bg-warning px-3 py-2 rounded-pill">{{ 'Menunggu pembayaran' if transaction.payment_status == 'pending' else 'Dibatalkan' }}</span>
+            <h3 class="fw-bold text-dark mb-0">Reservasi MegiLoka</h3>
+            {% endif %}
+        </div>
+        <div class="d-flex gap-2">
+            <button onclick="window.print()" class="btn btn-outline-dark rounded-pill">
+                <i class="fa-solid fa-print me-1"></i>{{ 'Cetak ' ~ (ticket_data_list|length) ~ ' tiket' if transaction.payment_status == 'paid' else 'Cetak bukti reservasi' }}
+            </button>
+            <a href="{{ url_for('index') }}" class="btn btn-primary rounded-pill">
+                <i class="fa-solid fa-house me-1"></i>Kembali ke Beranda
+            </a>
+        </div>
+    </div>
+
+    <!-- Transaction Metadata Card -->
+    <div class="card border-0 shadow-sm rounded-4 p-4 mb-4">
+        <div class="row align-items-center">
+            <div class="col-md-6 mb-3 mb-md-0">
+                <small class="text-muted text-uppercase fw-bold">{{ 'Nomor reservasi' if transaction.invoice_number.startswith('INV-RSV-') else 'Nomor transaksi' }}</small>
+                <h4 class="fw-bold text-primary text-break mb-1">{{ transaction.invoice_number }}</h4>
+                <p class="text-secondary small mb-0">
+                    <i class="fa-solid fa-user me-1"></i>Pengunjung: <strong>{{ transaction.visitor_name }}</strong>
+                </p>
+                <p class="text-secondary small mb-0">
+                    <i class="fa-solid fa-landmark me-1"></i>Destinasi: <strong>{{ transaction.destination.name }}</strong>
+                </p>
+                {% if transaction.tickets %}
+                <p class="text-secondary small mb-0">Kunjungan: <strong>{{ transaction.tickets[0].valid_for_date.strftime('%d/%m/%Y') }}</strong> · {{ transaction.tickets|length }} tiket</p>
+                {% endif %}
+            </div>
+            <div class="col-md-6 text-md-end">
+                <span class="badge bg-light text-dark border p-2 rounded-3 mb-2">
+                    Metode: {{ payment_methods[transaction.payment_method] }}
+                </span>
+                {% if transaction.payment_status == 'pending' %}<div class="small text-muted">Perkiraan bayar{% if promo_quote %} dengan kode referral{% endif %}</div>{% endif %}
+                <h3 class="fw-bold text-success mb-0">Rp {{ "{:,.0f}".format(transaction.total_amount - quantity_quote - promo_quote).replace(',', '.') }}</h3>
+                {% if quantity_quote or transaction.quantity_discount %}<div class="small">Diskon rombongan Rp {{ "{:,.0f}".format(quantity_quote or transaction.quantity_discount).replace(',', '.') }}</div>{% endif %}
+                {% if transaction.loyalty_discount %}<div class="small">Potongan loyalitas Rp {{ "{:,.0f}".format(transaction.loyalty_discount).replace(',', '.') }}</div>{% endif %}
+                {% if promo_quote or transaction.promo_discount %}<div class="small">Potongan referral Rp {{ "{:,.0f}".format(promo_quote or transaction.promo_discount).replace(',', '.') }}</div>{% endif %}
+                <small class="text-muted">{{ 'Dibayar (WIB)' if transaction.paid_at else 'Tanggal transaksi' }} · {{ (transaction.paid_at or transaction.transaction_time).strftime('%d-%m-%Y %H:%M') }}</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Individual Tickets List -->
+    {% if transaction.payment_status == 'pending' %}
+    <div class="alert alert-info">
+        <p class="mb-2">Bukti reservasi ini mencakup <strong>{{ transaction.tickets|length }} tiket</strong>. Setelah pembayaran dikonfirmasi di POS, setiap tiket punya kode masuk dan QR yang bisa dicetak.</p>
+        {% if transaction.promo_code %}
+        <p class="mb-2">Kode referral <strong class="font-monospace">{{ transaction.promo_code }}</strong> · Berlaku sampai {{ transaction.promo_expires_on.strftime('%d/%m/%Y') }}. Tunjukkan kepada kasir untuk memakai promo.</p>
+        {% endif %}
+        <p class="mb-2">Tunjukkan nomor reservasi di loket. Kasir akan menyampaikan jumlah akhir{% if transaction.payment_method != 'cash' %} dan petunjuk pembayaran {{ payment_methods[transaction.payment_method] }}{% endif %}.</p>
+        <a class="no-print" href="{{ url_for('ticket_view', invoice_number=transaction.invoice_number) }}">Perbarui status</a>
+    </div>
+    {% elif transaction.payment_status == 'paid' %}
+    <h5 class="fw-bold text-dark mb-3 no-print"><i class="fa-solid fa-qrcode text-primary me-2"></i>Tiket masuk QR</h5>
+    <p class="text-muted small no-print">Ada {{ ticket_data_list|length }} tiket dalam pesanan ini. Tunjukkan satu kode QR berbeda untuk setiap pengunjung. Simpan atau cetak halaman ini untuk digunakan di pintu masuk.</p>
+
+    <div class="row g-4 print-ticket-list">
+        {% for item in ticket_data_list %}
+        <div class="col-md-6 print-ticket-item">
+            <div class="ticket-card shadow-sm">
+                <div class="d-flex justify-content-between align-items-start ticket-header">
+                    <div>
+                        <span class="badge bg-info text-dark fw-bold mb-1">Tiket {{ loop.index }} dari {{ loop.length }}</span>
+                        <h5 class="fw-bold text-dark mb-0">{{ item.ticket.transaction.destination.name }}</h5>
+                        <small class="text-muted">{{ item.ticket.ticket_type.name }}</small>
+                    </div>
+                    {% if item.ticket.status == 'valid' %}
+                        <span class="ticket-status-badge bg-success text-white"><i class="fa-solid fa-shield-halved me-1"></i>VALID</span>
+                    {% elif item.ticket.status == 'used' %}
+                        <span class="ticket-status-badge bg-secondary text-white"><i class="fa-solid fa-check-double me-1"></i>USED</span>
+                    {% else %}
+                        <span class="ticket-status-badge bg-danger text-white">{{ item.ticket.status.upper() }}</span>
+                    {% endif %}
+                </div>
+
+                <div class="row align-items-center">
+                    <div class="col-7">
+                        <small class="text-muted d-block">Kode Tiket / Serial:</small>
+                        <span class="fw-bold text-primary font-monospace fs-6 text-break d-block mb-2">{{ item.ticket.ticket_code }}</span>
+
+                        <small class="text-muted d-block">Berlaku Untuk Tanggal:</small>
+                        <strong class="text-dark d-block mb-2"><i class="fa-solid fa-calendar-day me-1 text-primary"></i>{{ item.ticket.valid_for_date.strftime('%d %B %Y') }}</strong>
+
+                        <small class="text-muted d-block">Tarif Retribusi:</small>
+                        <span class="fw-bold text-success">Rp {{ "{:,.0f}".format(item.ticket.ticket_type.price) }}</span>
+                    </div>
+                    <div class="col-5 text-center">
+                        <div class="ticket-qr-container">
+                            <img src="{{ item.qr_b64 }}" alt="QR Code Tiket" class="img-fluid" style="max-width: 140px;">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

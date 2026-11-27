@@ -5,7 +5,7 @@
 **Goal:** Train a local intent model and serve accurate tourism answers from the existing database.
 **Architecture:** TF-IDF word/character features with logistic regression; independent date/entity parsing and database-backed response service; Flask integration and safe public chat controls.
 **Tech Stack:** Python, scikit-learn, Flask, SQLAlchemy, unittest.
-**Spec:** docs/rancangan-training-megi.md (approved in chat).
+**Spec:** docs/ai/rancangan-pelatihan.md (approved in chat).
 
 ## Global Constraints
 
@@ -32,14 +32,14 @@ Interface: predict_intent(message: str) -> dict with intent, confidence, model; 
 - [x] Run model tests, inspect evaluation including failures.
 
 ### Task 2: Ground answers and guard the endpoint
-Files: backend/ai/dates.py, backend/ai/concierge.py, backend/app.py, backend/tests/test_ai_chat.py.
+Files: backend/ai/dates.py, backend/ai/concierge.py, backend/app.py, backend/tests/test_chat_and_ticketing.py.
 Interfaces: parse_period(message: str, today: date) -> tuple[date,date,str] | None (raises ValueError for invalid explicit date); answer_question(message: str, today: date | None = None) -> dict reply, intent, confidence, sources.
 - [x] Write failing temporary-database tests for next-day schedules, past events, missing start time, ambiguous names, live ticket prices, promos, unknown entities, unsupported topics, invalid input, forbidden guest writes and unknown actions.
 - [x] Observe failures using unittest, implement date/name retrieval and replies, integrate into existing route.
 - [x] Run entire unittest suite, ensure no writes to live database.
 
 ### Task 3: Visitor experience and student handoff
-Files: frontend/html/base.html, frontend/js/main.js, docs/PANDUAN_AI_MEGI.md, README.md.
+Files: frontend/templates/layouts/base.html, frontend/js/main.js, docs/ai/panduan-tanya-megi.md, README.md.
 Interface: askMegi(question: str) sends question-only request; escaped formatting for all chat text, same-origin source links built from structured sources.
 - [x] Add tests for safe public shortcuts, removal of official claims, and source links in endpoint responses; verify failing behavior first.
 - [x] Replace public creation buttons with questions, escape HTML, clarify application-data provenance and missing facts.

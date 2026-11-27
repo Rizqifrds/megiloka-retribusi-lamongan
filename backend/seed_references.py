@@ -1,12 +1,13 @@
 from app import app
-from destination_catalog import catalog_by_code, upgrade_visit_schema
+from database.migrations import upgrade_schema
+from database.catalog import catalog_by_code
 from models import db, Destination
-from utils.ai_service import LAMONGAN_DESTINATION_TEMPLATES
+from ai.content_publisher import LAMONGAN_DESTINATION_TEMPLATES
 
 
 def seed_references():
     with app.app_context():
-        upgrade_visit_schema()
+        upgrade_schema()
         catalog = catalog_by_code()
         known_prefixes = {destination.code.rsplit('-', 1)[0]
                           for destination in Destination.query.all()}

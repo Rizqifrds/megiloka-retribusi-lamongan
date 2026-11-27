@@ -26,34 +26,35 @@ from flask import (
 from sqlalchemy.exc import IntegrityError
 
 from config import Config
-from destination_catalog import catalog_by_code, seed_booking_rates, upgrade_visit_schema
+from database.initialization import initialize_database, register_database_commands
 from models import db, Destination, User, TicketType, Transaction, Ticket, PADReportRecap, Hotel, Promo, Event
-from utils.qr_generator import create_ticket_qr_payload, verify_qr_payload, generate_qr_image_base64
-from utils.holiday_feed import HolidayFeed
-from utils.pad_reporting import pad_rows
-from utils.ticket_pricing import (
+from services.ticket_qr import create_ticket_qr_payload, verify_qr_payload, generate_qr_image_base64
+from services.agenda_feed import HolidayFeed
+from services.pad_reporting import pad_rows
+from services.ticket_pricing import (
     PAYMENT_METHODS, QUANTITY_MINIMUM, QUANTITY_PERCENT, available_promo_discount,
     promo_discount, quantity_discount, ticket_promo,
 )
-from utils.whatsapp_agenda import init_whatsapp
-from utils.lamongan_calendar import POSTER_PAGE, POSTER_YEAR, poster_events, poster_months, upcoming_poster_events
+from services.whatsapp_agenda import init_whatsapp
+from services.lamongan_calendar import POSTER_PAGE, POSTER_YEAR, poster_events, poster_months, upcoming_poster_events
 from ai.dates import WIB, today_wib
 from ai.concierge import answer_question
 from ai.intent_model import ModelUnavailable
 from visitor_auth import current_visitor, normalize_name, normalize_phone, verify_visitor_csrf, visitor_auth
-from utils.ai_service import (
+from ai.content_publisher import (
     LAMONGAN_EVENT_TEMPLATES, LAMONGAN_DESTINATION_TEMPLATES,
     resolve_date_target, detect_ai_intent
 )
 
 app = Flask(
     __name__,
-    template_folder=os.path.join(FRONTEND_DIR, 'html'),
+    template_folder=os.path.join(FRONTEND_DIR, 'templates'),
     static_folder=None
 )
 app.config.from_object(Config)
 
 db.init_app(app)
+register_database_commands(app)
 app.register_blueprint(visitor_auth)
 init_whatsapp(app)
 instagram_settings = tuple(app.config[key] for key in (
@@ -118,54 +119,9 @@ def generate_ticket_code(dest_code):
     random_str = secrets.token_hex(12).upper()
     return f"MGLK-{dest_code}-{random_str}"
 
-# Auto Database Seeder Helper
 def seed_database():
     with app.app_context():
-        upgrade_visit_schema()
-        if Destination.query.count() == 0:
-            catalog = catalog_by_code()
-            categories = {
-                'DEST-SND': 'Wisata Religi & Sejarah',
-                'DEST-WDG': 'Wisata Alam & Edukasi',
-                'DEST-MZG': 'Wisata Satwa & Geologi',
-                'DEST-WBL': 'Taman Rekreasi Bahari',
-                'DEST-KTG': 'Wisata Pesisir & Mangrove',
-            }
-            dest1, dest2, dest3, dest4, dest5 = [
-                Destination(category=category, **catalog[code])
-                for code, category in categories.items()
-            ]
-            db.session.add_all([dest1, dest2, dest3, dest4, dest5])
-            seed_booking_rates(dest3)
-            seed_booking_rates(dest4)
-            db.session.flush()
-
-            # Add Users
-            admin_user = User(username='admin', full_name='Administrator Disparbud Lamongan', role='admin')
-            admin_user.set_password('adminmegiloka')
-
-            cashier1 = User(username='kasir_drajat', full_name='Budi Loket Sunan Drajat', role='cashier', destination_id=dest1.id)
-            cashier1.set_password('kasirmegiloka')
-
-            gate1 = User(username='gate_drajat', full_name='Siti Petugas Gate Drajat', role='gate_keeper', destination_id=dest1.id)
-            gate1.set_password('gatemegiloka')
-
-            db.session.add_all([admin_user, cashier1, gate1])
-            db.session.commit()
-
-            # Add Initial PAD Recap data for chart preview
-            today = date.today()
-            for i in range(7):
-                past_date = today - timedelta(days=i)
-                db.session.add_all([
-                    PADReportRecap(destination_id=dest1.id, report_date=past_date, total_tickets_sold=random.randint(80, 150), total_revenue=random.randint(80, 150)*10000.0),
-                    PADReportRecap(destination_id=dest2.id, report_date=past_date, total_tickets_sold=random.randint(50, 120), total_revenue=random.randint(50, 120)*15000.0),
-                    PADReportRecap(destination_id=dest3.id, report_date=past_date, total_tickets_sold=random.randint(100, 250), total_revenue=random.randint(100, 250)*35000.0),
-                    PADReportRecap(destination_id=dest4.id, report_date=past_date, total_tickets_sold=random.randint(200, 500), total_revenue=random.randint(200, 500)*75000.0),
-                    PADReportRecap(destination_id=dest5.id, report_date=past_date, total_tickets_sold=random.randint(60, 110), total_revenue=random.randint(60, 110)*10000.0)
-                ])
-            db.session.commit()
-            print("[INFO] MegiLoka database initialized.")
+        initialize_database()
 
 
 # ----------------------------
@@ -246,7 +202,7 @@ def index():
     total_dest = Destination.query.filter_by(is_active=True).count()
 
     return render_template(
-        'index.html',
+        'public/home.html',
         destinations=featured_destinations,
         total_dest=total_dest,
         official_agenda=upcoming_poster_events(today),
@@ -256,7 +212,7 @@ def index():
 
 @app.get('/agenda-libur/pembaruan')
 def holiday_updates_partial():
-    response = app.make_response(render_template('promo_feed.html', promo_feed=holiday_feed.promo_view()))
+    response = app.make_response(render_template('components/promo_feed.html', promo_feed=holiday_feed.promo_view()))
     response.cache_control.no_store = True
     return response
 
@@ -357,7 +313,7 @@ def destinations():
     all_destinations = query.order_by(Destination.name.asc()).all()
 
     return render_template(
-        'destinations.html',
+        'public/destination_list.html',
         destinations=all_destinations,
         tag_groups=TAG_GROUPS,
         selected_group=selected_group,
@@ -368,7 +324,7 @@ def destinations():
 @app.route('/destinations/<int:id>')
 def destination_detail(id):
     destination = Destination.query.filter_by(id=id, is_active=True).first_or_404()
-    return render_template('destination_detail.html', destination=destination)
+    return render_template('public/destination_detail.html', destination=destination)
 
 @app.route('/booking/<int:destination_id>', methods=['GET', 'POST'])
 def booking(destination_id):
@@ -435,7 +391,7 @@ def booking(destination_id):
         db.session.commit()
         return redirect(url_for('ticket_view', invoice_number=order.invoice_number))
 
-    return render_template('booking.html', destination=destination, ticket_types=ticket_types,
+    return render_template('visitor/ticket_booking.html', destination=destination, ticket_types=ticket_types,
                            payment_methods=PAYMENT_METHODS, ticket_offer=ticket_promo(destination.id, today),
                            quantity_minimum=QUANTITY_MINIMUM, quantity_percent=QUANTITY_PERCENT,
                            default_date=(today + timedelta(days=1)).isoformat(),
@@ -481,7 +437,7 @@ def ticket_view(invoice_number):
     if transaction.payment_status == 'pending':
         quantity_quote = quantity_discount(len(transaction.tickets), transaction.total_amount)
         promo_quote = available_promo_discount(transaction, today_wib(), quantity_quote)
-    response = app.make_response(render_template('ticket_view.html', transaction=transaction,
+    response = app.make_response(render_template('visitor/ticket_receipt.html', transaction=transaction,
                                                  ticket_data_list=ticket_data_list, payment_methods=PAYMENT_METHODS,
                                                  quantity_quote=quantity_quote, promo_quote=promo_quote))
     response.cache_control.no_store = True
@@ -563,7 +519,7 @@ def pos():
         session['reservation_csrf'] = secrets.token_urlsafe(24)
     discount = quantity_discount(len(reservation.tickets), reservation.total_amount) if reservation else Decimal(0)
     promo = available_promo_discount(reservation, today, discount) if reservation else Decimal(0)
-    return render_template('pos.html', destinations=destinations, selected_dest=selected_dest, ticket_types=ticket_types,
+    return render_template('staff/point_of_sale.html', destinations=destinations, selected_dest=selected_dest, ticket_types=ticket_types,
                            invoice=invoice, reservation=reservation, pending_reservations=pending_reservations,
                            payment_methods=PAYMENT_METHODS, quantity_quote=discount, promo_quote=promo,
                            quantity_minimum=QUANTITY_MINIMUM, quantity_percent=QUANTITY_PERCENT)
@@ -630,7 +586,7 @@ def confirm_reservation(invoice_number):
 def validator():
     destinations = Destination.query.filter_by(is_active=True).all()
     recent_scans = Ticket.query.filter(Ticket.scanned_at.isnot(None)).order_by(Ticket.scanned_at.desc()).limit(10).all()
-    return render_template('validator.html', destinations=destinations, recent_scans=recent_scans)
+    return render_template('staff/gate_validation.html', destinations=destinations, recent_scans=recent_scans)
 
 @app.route('/api/validate-qr', methods=['POST'])
 @login_required
@@ -814,7 +770,7 @@ def export_pad_csv():
 @role_required('admin')
 def destinations_crud():
     destinations = Destination.query.order_by(Destination.id.desc()).all()
-    return render_template('admin/destinations_crud.html', destinations=destinations)
+    return render_template('admin/manage_destinations.html', destinations=destinations)
 
 def apply_visit_fields(dest):
     status = request.form.get('admission_status', 'unknown')
@@ -974,7 +930,7 @@ def hotels_crud():
     hotels = Hotel.query.order_by(Hotel.id.desc()).all()
     destinations = Destination.query.filter_by(is_active=True).all()
     direct_promos = Promo.query.filter_by(hotel_id=None).order_by(Promo.valid_until.desc()).all()
-    return render_template('admin/hotels_crud.html', hotels=hotels, destinations=destinations, direct_promos=direct_promos)
+    return render_template('admin/manage_hotels_and_promos.html', hotels=hotels, destinations=destinations, direct_promos=direct_promos)
 
 
 @app.post('/admin/hotels/delete/<int:id>')
@@ -1044,7 +1000,7 @@ def promo_create():
 def events_crud():
     events = Event.query.order_by(Event.event_date.desc()).all()
     destinations = Destination.query.all()
-    return render_template('admin/events_crud.html', events=events, destinations=destinations)
+    return render_template('admin/manage_events.html', events=events, destinations=destinations)
 
 
 @app.post('/admin/events/delete/<int:id>')
@@ -1077,7 +1033,7 @@ def event_create():
 def public_calendar():
     today = today_wib()
     return render_template(
-        'calendar.html', instagram_events=holiday_feed.instagram_events(today),
+        'public/event_calendar.html', instagram_events=holiday_feed.instagram_events(today),
         poster_months=poster_months(today), poster_year=POSTER_YEAR, poster_source=POSTER_PAGE,
         poster_page_updated=holiday_feed.poster_page_updated(),
         district_events=holiday_feed.district_events(today),
@@ -1115,7 +1071,7 @@ def login():
 
         flash('Username atau Password salah.', 'danger')
 
-    return render_template('login.html')
+    return render_template('staff/login.html')
 
 @app.route('/logout')
 def logout():

@@ -1,0 +1,124 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Gate Entrance QR Validator - MegiLoka{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row align-items-center mb-4">
+        <div class="col-md-7">
+            <h2 class="fw-bold text-dark mb-1"><i class="fa-solid fa-qrcode text-info me-2"></i>Pemindai Gate Entrance Ticket</h2>
+            <p class="text-muted mb-0">Verifikasi keabsahan QR Code tiket pengunjung secara real-time untuk cegah kebocoran tiket manual.</p>
+        </div>
+        <div class="col-md-5 text-md-end">
+            <span class="badge bg-success px-3 py-2 rounded-pill fs-7">
+                <i class="fa-solid fa-signal me-1"></i>Scanner Status: ACTIVE
+            </span>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Scanner Input Section -->
+        <div class="col-lg-6">
+            <div class="card card-megiloka border-0 p-4 shadow-sm h-100">
+                <h5 class="fw-bold text-dark mb-3"><i class="fa-solid fa-camera text-primary me-2"></i>Input Scan QR Code Tiket</h5>
+                <p class="text-muted small mb-4">Pindai dengan pemindai QR atau ketik kode MGLK- yang tercetak pada masing-masing tiket.</p>
+
+                <form id="qrScanForm" onsubmit="event.preventDefault(); processQRScan();">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" for="qrInputText">QR atau kode tiket</label>
+                        <textarea id="qrInputText" class="form-control font-monospace rounded-3" rows="4" 
+                                  maxlength="512" placeholder="Contoh: MGLK-…" required></textarea>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg rounded-pill fw-bold shadow">
+                            <i class="fa-solid fa-magnifying-glass me-2"></i>Verifikasi Keabsahan Tiket
+                        </button>
+                    </div>
+                </form>
+
+            </div>
+        </div>
+
+        <!-- Scan Result & Verification Display -->
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm rounded-4 p-4 h-100 bg-white" id="resultContainer">
+                <div class="text-center py-5 text-muted" id="placeholderState">
+                    <i class="fa-solid fa-qrcode display-1 text-secondary opacity-50 mb-3"></i>
+                    <h5 class="fw-bold">Menunggu Pemindaian Tiket...</h5>
+                    <p class="small text-muted col-10 mx-auto">Arahkan scanner ke QR Code atau masukkan payload string di panel sebelah kiri.</p>
+                </div>
+
+                <div id="activeResultBox" class="d-none">
+                    <!-- Dynamic feedback injected by JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function scanText(value) {
+    const text = document.createElement('span');
+    text.textContent = value ?? '';
+    return text.innerHTML;
+}
+
+function processQRScan() {
+    const payload = document.getElementById('qrInputText').value.trim();
+    if (!payload) return;
+
+    fetch("{{ url_for('api_validate_qr') }}", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ qr_payload: payload })
+    })
+    .then(response => response.json())
+    .then(data => {
+        const placeholder = document.getElementById('placeholderState');
+        const resultBox = document.getElementById('activeResultBox');
+        
+        placeholder.classList.add('d-none');
+        resultBox.classList.remove('d-none');
+
+        if (data.success) {
+            playBeepSound('success');
+            resultBox.innerHTML = `
+                <div class="scan-result-box scan-success">
+                    <i class="fa-solid fa-circle-check display-1 mb-3"></i>
+                    <h2 class="fw-bold mb-2">TIKET VALID!</h2>
+                    <h4 class="fw-semibold mb-3">${scanText(data.message)}</h4>
+                    <hr>
+                    <div class="text-start bg-white p-3 rounded-3 text-dark shadow-sm">
+                        <p class="mb-1"><strong>Kode Tiket:</strong> <span class="font-monospace text-primary">${scanText(data.ticket.code)}</span></p>
+                        <p class="mb-1"><strong>Nama Pengunjung:</strong> ${scanText(data.ticket.visitor)}</p>
+                        <p class="mb-1"><strong>Destinasi:</strong> ${scanText(data.ticket.destination)}</p>
+                        <p class="mb-1"><strong>Jenis Tiket:</strong> ${scanText(data.ticket.type)}</p>
+                        <p class="mb-0"><strong>Waktu Scan:</strong> ${scanText(data.ticket.scanned_at)}</p>
+                    </div>
+                </div>
+            `;
+        } else {
+            playBeepSound('error');
+            resultBox.innerHTML = `
+                <div class="scan-result-box scan-error">
+                    <i class="fa-solid fa-circle-xmark display-1 mb-3"></i>
+                    <h2 class="fw-bold mb-2">AKSES DITOLAK!</h2>
+                    <h4 class="fw-semibold mb-3">${scanText(data.message)}</h4>
+                    <hr>
+                    <p class="small text-muted mb-0">Periksa kembali keaslian tiket atau status tanggal berlaku tiket.</p>
+                </div>
+            `;
+        }
+    })
+    .catch(err => {
+        console.error("Scanner Error:", err);
+        alert("Gagal terhubung ke server validator.");
+    });
+}
+</script>
+{% endblock %}

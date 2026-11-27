@@ -1,0 +1,147 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Katalog Destinasi Wisata - MegiLoka{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Header Page & Search -->
+    <div class="row align-items-center mb-4 g-3">
+        <div class="col-lg-7">
+            <h2 class="fw-bold text-dark mb-1">
+                <i class="fa-solid fa-map-location-dot text-primary me-2"></i>Katalog Wisata Kabupaten Lamongan
+            </h2>
+            <p class="text-muted mb-0">Jelajahi keindahan bahari, cagar budaya religi, dan wahana rekreasi keluarga pilihan.</p>
+        </div>
+        <div class="col-lg-5">
+            <!-- Search Form -->
+            <form action="{{ url_for('destinations') }}" method="GET" class="d-flex gap-2">
+                {% if selected_group %}
+                <input type="hidden" name="group" value="{{ selected_group }}">
+                {% endif %}
+                {% for tag in selected_tags %}
+                <input type="hidden" name="tags" value="{{ tag }}">
+                {% endfor %}
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0 rounded-start-pill ps-3 text-muted">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                    </span>
+                    <input type="text" name="q" value="{{ search_query }}" aria-label="Cari destinasi" class="form-control border-start-0 rounded-end-pill py-2" placeholder="Cari nama destinasi atau lokasi...">
+                </div>
+                <button type="submit" class="btn btn-primary rounded-pill px-4 fw-semibold">
+                    Cari
+                </button>
+            </form>
+        </div>
+    </div>
+
+    {% set has_filter = selected_group or selected_tags %}
+    <details class="mb-3" id="tagFilterDrawer" style="scroll-margin-top: 7rem;"
+             {% if has_filter or request.args.get('filter') == 'open' %}open{% endif %}>
+        <summary class="btn btn-outline-primary rounded-pill d-inline-flex align-items-center gap-2">
+            <i class="fa-solid fa-sliders" aria-hidden="true"></i>
+            Filter Tag
+            <i class="fa-solid fa-chevron-down small" aria-hidden="true"></i>
+        </summary>
+        <div class="border rounded-4 bg-white p-3 mt-2">
+            <p class="fw-semibold mb-2" id="tagFilterLabel">Pilih satu kategori</p>
+            <div class="d-flex flex-wrap gap-2" role="group" aria-labelledby="tagFilterLabel">
+                {% for key, category in tag_groups.items() %}
+                {% set selected = key == selected_group %}
+                <a href="{{ url_for('destinations', group=None if selected else key, q=search_query or None, filter='open', _anchor='tagFilterDrawer') }}"
+                   class="btn btn-sm {{ 'btn-primary' if selected else 'btn-outline-primary' }} rounded-pill px-3 py-2"
+                   aria-label="{{ 'Hapus' if selected else 'Pilih' }} kategori {{ category.name }}">
+                    {% if selected %}<i class="fa-solid fa-check me-1" aria-hidden="true"></i>{% endif %}
+                    {{ category.name }}
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+    </details>
+
+    <div class="d-flex flex-wrap align-items-center gap-3 mb-3 small">
+        <p class="text-muted mb-0">{{ destinations|length }} destinasi{% if search_query %} untuk “{{ search_query }}”{% endif %}</p>
+        {% if has_filter %}
+        <a href="{{ url_for('destinations', q=search_query or None, filter='open', _anchor='tagFilterDrawer') }}">Hapus filter</a>
+        {% endif %}
+    </div>
+
+
+    <div class="row g-4">
+        {% if destinations %}
+            {% for dest in destinations %}
+            <div class="col-md-6 col-lg-4">
+                <div class="card card-megiloka h-100 border-0 shadow-sm rounded-4 overflow-hidden">
+                    <div class="dest-img-container position-relative" style="height: 210px;">
+                        {% include 'components/destination_photo.html' %}
+                        
+                        {% if dest.active_promo %}
+                        <span class="promo-badge-ribbon" style="font-size:0.7rem; top: 10px; left: 10px;">
+                            <i class="fa-solid fa-bolt me-1"></i>PROMO {% if dest.active_promo.discount_percent %}{{ dest.active_promo.discount_percent|int }}% OFF{% endif %}
+                        </span>
+                        {% endif %}
+
+                        {% include 'components/destination_admission_badge.html' %}
+                    </div>
+                    <div class="card-body d-flex flex-column p-4">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="badge badge-lamongan-upcoming rounded-pill px-3 py-1" style="font-size: 0.75rem;">
+                                <i class="fa-solid fa-tag me-1"></i>{{ dest.category }}
+                            </span>
+                            {% if dest.opening_date %}
+                            <span class="badge badge-lamongan-urgent rounded-pill px-2 py-1" style="font-size: 0.72rem;">
+                                <i class="fa-regular fa-calendar-check me-1"></i>{{ dest.opening_date.strftime('%d %b %Y') }}
+                            </span>
+                            {% endif %}
+                        </div>
+
+                        <h5 class="card-title fw-bold text-dark mb-1">{{ dest.name }}</h5>
+                        <p class="text-muted small mb-2">
+                            <i class="fa-solid fa-location-dot text-primary me-1"></i>{{ dest.location }}
+                        </p>
+
+                        {% if dest.active_promo %}
+                        <div class="promo-inner-callout mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="promo-title">
+                                    <i class="fa-solid fa-gift me-1"></i>{{ dest.active_promo.name }}
+                                </span>
+                                {% if dest.active_promo.discount_percent %}
+                                <span class="badge badge-lamongan-accent rounded-pill" style="font-size: 0.7rem;">
+                                    Hemat {{ dest.active_promo.discount_percent|int }}%
+                                </span>
+                                {% endif %}
+                            </div>
+                            <div class="text-muted" style="font-size: 0.72rem;">
+                                <i class="fa-regular fa-clock me-1 text-warning"></i>Promo berlaku s.d. {{ dest.active_promo.valid_until.strftime('%d %b %Y') }}
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <p class="card-text text-secondary small mb-4 flex-grow-1" style="line-height: 1.55;">
+                            {{ (dest.description or '')|truncate(120, True, '...') }}
+                        </p>
+                        <div class="d-flex gap-2 pt-2 border-top">
+                            <a href="{{ url_for('destination_detail', id=dest.id) }}" class="btn btn-outline-primary btn-sm flex-fill rounded-pill fw-semibold py-2">
+                                Info Detail
+                            </a>
+                            {% if dest.available_tickets %}<a href="{{ url_for('booking', destination_id=dest.id) }}" class="btn btn-primary btn-sm flex-fill rounded-pill fw-bold py-2 shadow-sm">
+                                <i class="fa-solid fa-ticket me-1"></i>Pesan Tiket
+                            </a>{% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="col-12 text-center py-5">
+                <div class="p-5 bg-white rounded-4 border shadow-sm mx-auto" style="max-width: 600px;">
+                    <i class="fa-solid fa-compass-slash text-muted display-4 mb-3"></i>
+                    <h5 class="fw-bold text-dark mb-2">Destinasi Wisata Tidak Ditemukan</h5>
+                    <p class="text-muted small mb-0">Coba kata pencarian atau pilihan filter lain.</p>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}

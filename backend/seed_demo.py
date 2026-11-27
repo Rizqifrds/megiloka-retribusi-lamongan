@@ -9,9 +9,9 @@ from sqlalchemy import MetaData, Table, URL, create_engine, func, inspect, selec
 
 from ai.dates import today_wib
 from app import app
-from destination_catalog import upgrade_visit_schema
+from database.migrations import upgrade_schema
 from models import Destination, Event, Hotel, PADReportRecap, Promo, Ticket, TicketType, Transaction, User, db
-from utils.qr_generator import create_ticket_qr_payload
+from services.ticket_qr import create_ticket_qr_payload
 
 
 def copy_sqlite(path):
@@ -100,10 +100,11 @@ def main():
     parser.add_argument('--copy-sqlite', type=Path, help='Salin data lama jika database tujuan masih kosong.')
     args = parser.parse_args()
     with app.app_context():
-        upgrade_visit_schema()
+        upgrade_schema()
         if args.copy_sqlite:
             copy_sqlite(args.copy_sqlite)
-        seed_demo()
+        else:
+            seed_demo()
         db.session.commit()
         for table in db.metadata.sorted_tables:
             count = db.session.scalar(select(func.count()).select_from(table))

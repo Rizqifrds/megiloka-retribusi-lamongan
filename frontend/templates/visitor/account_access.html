@@ -1,0 +1,44 @@
+{% extends "layouts/base.html" %}
+{% block title %}{{ 'Daftar Pengunjung' if registering else 'Masuk Pengunjung' }}{% endblock %}
+{% block content %}
+<div class="container py-5">
+    <div class="card card-megiloka mx-auto p-4 p-md-5" style="max-width: 30rem;">
+        <h1 class="h3 fw-bold">{{ 'Daftar Pengunjung' if registering else 'Masuk Pengunjung' }}</h1>
+        <p class="text-muted mb-4">{{ 'Gunakan nama dan nomor telepon yang akan dipakai saat memesan tiket.' if registering else 'Masuk untuk melanjutkan pemesanan tiket online.' }}</p>
+        <form method="post">
+            <input type="hidden" name="csrf_token" value="{{ visitor_csrf() }}">
+            <div class="mb-3">
+                <label for="visitor-full-name" class="form-label">Nama lengkap</label>
+                <input id="visitor-full-name" name="full_name" type="text" class="form-control" autocomplete="{{ 'name' if registering else 'username' }}"
+                       maxlength="100" required value="{{ request.form.get('full_name', '') }}">
+            </div>
+            {% if registering or needs_phone %}
+            <div class="mb-3">
+                <label for="visitor-phone" class="form-label">Nomor WhatsApp atau telepon</label>
+                <input id="visitor-phone" name="phone" type="tel" class="form-control" autocomplete="tel"
+                       maxlength="35" placeholder="Contoh 081234567890" required value="{{ request.form.get('phone', '') }}">
+            </div>
+            {% endif %}
+            <div class="mb-3">
+                <label for="visitor-password" class="form-label">Kata sandi</label>
+                <input id="visitor-password" name="password" type="password" class="form-control"
+                       autocomplete="{{ 'new-password' if registering else 'current-password' }}" minlength="8" maxlength="128" required>
+                {% if registering %}<small class="text-muted">Minimal 8 karakter.</small>{% endif %}
+            </div>
+            {% if registering %}
+            <div class="mb-3">
+                <label for="visitor-confirm-password" class="form-label">Ulangi kata sandi</label>
+                <input id="visitor-confirm-password" name="password_confirmation" type="password" class="form-control"
+                       autocomplete="new-password" minlength="8" maxlength="128" required>
+            </div>
+            {% endif %}
+            <button class="btn btn-primary rounded-pill w-100" type="submit">{{ 'Buat akun' if registering else 'Masuk' }}</button>
+        </form>
+        {% if registering %}
+        <p class="text-center small mt-3 mb-0">Sudah punya akun? <a href="{{ url_for('visitor_auth.login', destination_id=destination_id) }}">Masuk</a></p>
+        {% else %}
+        <p class="text-center small mt-3 mb-0">Belum punya akun? <a href="{{ url_for('visitor_auth.register', destination_id=destination_id) }}">Daftar pengunjung</a></p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

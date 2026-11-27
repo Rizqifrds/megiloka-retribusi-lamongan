@@ -161,7 +161,7 @@ def access():
                 flash('Ada lebih dari satu akun yang cocok. Masukkan nomor telepon akun untuk melanjutkan.', 'warning')
             else:
                 flash('Nama lengkap atau kata sandi tidak cocok.', 'danger')
-    return render_template('visitor_access.html', registering=registering, destination_id=destination_id,
+    return render_template('visitor/account_access.html', registering=registering, destination_id=destination_id,
                            needs_phone=needs_phone), {
         'Cache-Control': 'no-store',
     }
@@ -175,7 +175,7 @@ def orders():
     page = Transaction.query.filter_by(visitor_account_id=visitor.id).options(
         joinedload(Transaction.destination), selectinload(Transaction.tickets),
     ).order_by(Transaction.transaction_time.desc(), Transaction.id.desc()).paginate(per_page=12)
-    return render_template('visitor_orders.html', orders=page), {'Cache-Control': 'private, no-store'}
+    return render_template('visitor/order_history.html', orders=page), {'Cache-Control': 'private, no-store'}
 
 
 @visitor_auth.post('/keluar')

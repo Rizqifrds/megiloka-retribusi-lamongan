@@ -1,4 +1,7 @@
 import os
+import secrets
+from pathlib import Path
+from tempfile import NamedTemporaryFile
 from dotenv import load_dotenv
 from sqlalchemy.engine import URL
 
@@ -10,8 +13,27 @@ FRONTEND_DIR = os.path.join(PROJECT_ROOT, 'frontend')
 load_dotenv(os.path.join(BASE_DIR, '.env'))
 load_dotenv(os.path.join(PROJECT_ROOT, '.env'))
 
+
+def local_secret_key():
+    path = Path(BASE_DIR) / 'instance' / 'secret-key'
+    try:
+        return path.read_text(encoding='ascii').strip()
+    except FileNotFoundError:
+        path.parent.mkdir(parents=True, exist_ok=True)
+    with NamedTemporaryFile(mode='w', encoding='ascii', dir=path.parent, delete=False) as stream:
+        temp_path = Path(stream.name)
+        stream.write(secrets.token_hex(32))
+    try:
+        os.link(temp_path, path)
+    except FileExistsError:
+        pass  # Another process initialized the same instance.
+    finally:
+        temp_path.unlink()
+    return path.read_text(encoding='ascii').strip()
+
+
 class Config:
-    SECRET_KEY = os.getenv('SECRET_KEY', 'megiloka_lamongan_megilan_secret_key_2026')
+    SECRET_KEY = os.getenv('SECRET_KEY', '').strip() or local_secret_key()
     HOLIDAY_PARTNER_URL = os.getenv('HOLIDAY_PARTNER_URL', '').strip()
     HOLIDAY_WEBHOOK_TOKEN = os.getenv('HOLIDAY_WEBHOOK_TOKEN', '')
     INSTAGRAM_GRAPH_VERSION = os.getenv('INSTAGRAM_GRAPH_VERSION', '').strip()

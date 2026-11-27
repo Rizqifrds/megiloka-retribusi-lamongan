@@ -5,7 +5,7 @@ import re
 from models import Destination, Event, Promo
 from ai.dates import MONTH_LOOKUP, format_date, parse_period, today_wib
 from ai.intent_model import predict_intent
-from utils.lamongan_calendar import POSTER_YEAR, poster_events
+from services.lamongan_calendar import POSTER_YEAR, poster_events
 
 PROVENANCE = '\n\nSumber: data aplikasi MegiLoka. Jadwal/data awal belum diverifikasi ke penyelenggara; konfirmasi sebelum berkunjung.'
 OFFICIAL_SOURCE = f'Kalender resmi Lamongan {POSTER_YEAR}'

@@ -1,0 +1,67 @@
+{% extends "layouts/base.html" %}
+{% block title %}Riwayat Pemesanan{% endblock %}
+{% block content %}
+<div class="container py-4 py-md-5">
+    <header class="d-flex flex-wrap gap-3 justify-content-between align-items-center mb-4">
+        <h1 class="h3 fw-bold mb-0">Riwayat Pemesanan</h1>
+        <a class="btn btn-primary rounded-pill" href="{{ url_for('destinations') }}">Cari destinasi</a>
+    </header>
+
+    <div class="row g-3">
+        {% for order in orders.items %}
+        <div class="col-md-6">
+            <article class="card card-megiloka h-100 p-3 p-lg-4">
+                <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
+                    <h2 class="h5 fw-bold mb-0">{{ order.destination.name }}</h2>
+                    {% if order.payment_status == 'paid' %}
+                    <span class="badge text-bg-success">Lunas</span>
+                    {% elif order.payment_status == 'pending' %}
+                    <span class="badge text-bg-warning">Menunggu pembayaran</span>
+                    {% else %}
+                    <span class="badge text-bg-secondary">Dibatalkan</span>
+                    {% endif %}
+                </div>
+                <p class="small text-muted text-break mb-3">{{ order.invoice_number }}</p>
+                <dl class="row g-1 small mb-3">
+                    <dt class="col-5">Tanggal pesan</dt>
+                    <dd class="col-7 mb-1">{{ order.transaction_time.strftime('%d/%m/%Y') if order.transaction_time else '—' }}</dd>
+                    {% if order.tickets %}
+                    <dt class="col-5">Kunjungan</dt>
+                    <dd class="col-7 mb-1">{{ order.tickets[0].valid_for_date.strftime('%d/%m/%Y') }}</dd>
+                    {% endif %}
+                    <dt class="col-5">Jumlah tiket</dt>
+                    <dd class="col-7 mb-1">{{ order.tickets|length }}</dd>
+                    <dt class="col-5">{{ 'Subtotal' if order.payment_status == 'pending' else 'Total' }}</dt>
+                    <dd class="col-7 mb-0">Rp {{ "{:,.0f}".format(order.total_amount).replace(',', '.') }}</dd>
+                </dl>
+                <a class="btn btn-outline-primary rounded-pill align-self-start mt-auto"
+                   href="{{ url_for('ticket_view', invoice_number=order.invoice_number) }}">
+                    {{ 'Lihat tiket' if order.payment_status == 'paid' else 'Lihat reservasi' }}
+                </a>
+            </article>
+        </div>
+        {% else %}
+        <div class="col-12">
+            <div class="card card-megiloka p-4">
+                <h2 class="h5">Belum ada pemesanan</h2>
+                <p class="text-muted mb-0">Tiket yang dipesan lewat akun ini akan muncul di sini.</p>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% if orders.pages > 1 %}
+    <nav aria-label="Halaman riwayat" class="d-flex flex-wrap align-items-center gap-2 mt-4">
+        {% if orders.has_prev %}
+        <a class="btn btn-sm btn-outline-primary rounded-pill"
+           href="{{ url_for('visitor_auth.orders', page=orders.prev_num) }}">Sebelumnya</a>
+        {% endif %}
+        <span class="small text-muted">Halaman {{ orders.page }} dari {{ orders.pages }}</span>
+        {% if orders.has_next %}
+        <a class="btn btn-sm btn-outline-primary rounded-pill"
+           href="{{ url_for('visitor_auth.orders', page=orders.next_num) }}">Berikutnya</a>
+        {% endif %}
+    </nav>
+    {% endif %}
+</div>
+{% endblock %}
